@@ -1,6 +1,7 @@
 "use client";
 
 import { AttentionQueue } from "@/components/planner/attention-queue";
+import { EmptyPlannerOverview } from "@/components/planner/empty-planner-overview";
 import { OverviewHeader } from "@/components/planner/overview-header";
 import { ProfileCompletionPrompt } from "@/components/planner/profile-completion-prompt";
 import { UpcomingEvents } from "@/components/planner/upcoming-events";
@@ -14,11 +15,8 @@ export function PlannerOverview() {
   const events = usePlannerEvents();
   const ready = useBrowserReady();
   return <div className="w-full min-w-0 space-y-6 lg:space-y-7">
-    <OverviewHeader />
-    {!ready ? <div className="h-72 animate-pulse rounded-xl bg-white" aria-label="Loading your workspace" /> : events.length === 0 ? <>
-      <UpcomingEvents />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]"><VerificationPrompt /><ProfileCompletionPrompt /></div>
-    </> : <>
+    <OverviewHeader showCreateAction={ready && events.length > 0} isEmpty={ready && events.length === 0} />
+    {!ready ? <div className="h-72 animate-pulse rounded-xl bg-white" aria-label="Loading your workspace" /> : events.length === 0 ? <EmptyPlannerOverview /> : <>
       <VerificationPrompt />
       <WorkSnapshot />
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">

@@ -3,7 +3,7 @@ import { CalendarDays, Plus, Sun } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { useBrowserReady } from "@/lib/planner-events";
 
-export function OverviewHeader() {
+export function OverviewHeader({ showCreateAction = true, isEmpty = false }: { showCreateAction?: boolean; isEmpty?: boolean }) {
   const ready = useBrowserReady();
   const now = ready ? new Date() : null;
   const date = now ? new Intl.DateTimeFormat("en-NG", { weekday: "long", month: "long", day: "numeric", timeZone: "Africa/Lagos" }).format(now) : "Your planner workspace";
@@ -14,12 +14,12 @@ export function OverviewHeader() {
       <div>
         <p className="mb-1.5 flex items-center gap-1.5 text-xs text-text-tertiary"><CalendarDays className="size-3.5" aria-hidden="true" />{date}</p>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-[-0.035em] text-text-primary sm:text-[1.75rem]">{greeting}, Amaka <Sun className="size-5 text-[#c9a458]" aria-hidden="true" strokeWidth={1.5} /></h1>
-        <p className="mt-1.5 text-sm text-text-secondary">A little clarity for your next big moment.</p>
+        <p className="mt-1.5 text-sm text-text-secondary">{isEmpty ? "Your planning space is ready. Let’s begin with an event." : "A little clarity for your next big moment."}</p>
       </div>
-      <Link href="/planner/create-event" className={buttonVariants({ size: "md" })}>
+      {showCreateAction && <Link href="/planner/create-event" className={buttonVariants({ size: "md" })}>
         <Plus aria-hidden="true" className="size-4" />
         Create event
-      </Link>
+      </Link>}
     </header>
   );
 }

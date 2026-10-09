@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, MapPin, Sparkles, UserRound, UsersRound, Wallet } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, MapPin, UserRound, UsersRound, Wallet } from "lucide-react";
 
 import { CoverPicker } from "@/components/planner/cover-picker";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,7 @@ export function CreateEventForm() {
               </div>
             ) : (
               <div className="space-y-6">
-                <div><span className="flex size-10 items-center justify-center rounded-xl bg-[#f3eff8] text-[#755d92]"><Sparkles className="size-5" aria-hidden="true" /></span><h2 className="mt-4 text-xl font-semibold tracking-tight">Advanced details</h2><p className="mt-1 text-sm text-text-secondary">Add what you know now. Everything here is optional and editable later.</p></div>
+                <div><h2 className="text-xl font-semibold tracking-tight">Advanced details</h2><p className="mt-1 text-sm text-text-secondary">Add what you know now. Everything here is optional and editable later.</p></div>
               <div className="grid gap-5 sm:grid-cols-2"><Input id="event-start-time" label="Start time" type="time" optional value={values.startTime} onChange={(event) => setField("startTime", event.target.value)} /><Input id="event-end-time" label="End time" type="time" optional value={values.endTime} onChange={(event) => setField("endTime", event.target.value)} /></div>
                 <div className="grid gap-5 sm:grid-cols-2"><Input id="event-client" label="Client or host" placeholder="e.g. Ada Okoye" optional value={values.clientName} onChange={(event) => setField("clientName", event.target.value)} /><Input id="event-guests" label="Expected guests" type="number" min="0" placeholder="e.g. 150" optional value={values.guestCount} onChange={(event) => setField("guestCount", event.target.value)} /></div>
                 <CurrencyInput id="event-budget" label="Estimated budget" placeholder="0" value={formatGroupedDigits(values.budget)} onChange={(event) => setField("budget", event.target.value.replace(/[^0-9]/g, "").slice(0, 15))} />
