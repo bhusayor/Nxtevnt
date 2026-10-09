@@ -1,0 +1,43 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+@import "../styles/typography.css";
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-dm-sans), "DM Sans", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select { font: inherit; }
+::selection { background: var(--brand-secondary); color: var(--text-primary); }
+
+@keyframes otp-pop {
+  0% { transform: scale(0.9); }
+  55% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.otp-digit-filled { animation: otp-pop 220ms var(--ease-emphasized); }
+
+@media (pointer: coarse) {
+  .button-touch-target { min-width: 44px; min-height: 44px; }
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 38%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
