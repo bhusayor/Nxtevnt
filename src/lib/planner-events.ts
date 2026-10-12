@@ -132,10 +132,10 @@ export function useBrowserReady() {
   return useSyncExternalStore(subscribeNoop, () => true, () => false);
 }
 
-export function createPlannerEvent(input: NewPlannerEvent): PlannerEvent {
+export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUID()): PlannerEvent {
   const event: PlannerEvent = {
     ...input,
-    id: crypto.randomUUID(),
+    id,
     createdAt: new Date().toISOString(),
     notes: "",
     noteEntries: [],
