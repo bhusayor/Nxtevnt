@@ -8,10 +8,10 @@ type CurrencyInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & 
   helperText?: string;
   error?: string;
   success?: string;
-  currency?: "NGN" | "USD" | "GBP";
+  currency?: "NGN" | "USD" | "GBP" | "EUR";
 };
 
-const symbols = { NGN: "₦", USD: "$", GBP: "£" };
+const symbols = { NGN: "₦", USD: "$", GBP: "£", EUR: "€" };
 
 export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
   ({ id, label, helperText, error, success, currency = "NGN", className, ...props }, ref) => {

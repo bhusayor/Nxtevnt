@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { formatEventDate, useBrowserReady, usePlannerEvents } from "@/lib/planner-events";
+import { formatEventDate, isEventCancelled, useBrowserReady, usePlannerEvents } from "@/lib/planner-events";
 import { cn } from "@/lib/utils/cn";
 
 const weekday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -21,7 +21,7 @@ export function WeekSchedule() {
   const days = weekday.map((label, index) => {
     const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
     const key = date.toLocaleDateString("sv-SE");
-    return { label, key, day: date.getDate(), events: events.filter((event) => event.date === key) };
+    return { label, key, day: date.getDate(), events: events.filter((event) => !isEventCancelled(event) && event.date === key) };
   });
   const scheduled = days.flatMap((day) => day.events.map((event) => ({ ...event, displayDate: day.key })));
   const range = `${formatEventDate(days[0].key, { month: "short", day: "numeric" })} – ${formatEventDate(days[6].key, { month: "short", day: "numeric" })}`;

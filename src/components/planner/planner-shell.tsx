@@ -21,6 +21,7 @@ import {
 
 import { BrandMark } from "@/components/nextevnt/brand-logo";
 import { WorkspaceSwitcher, type WorkspaceRole } from "@/components/planner/workspace-switcher";
+import { useCreditBalance } from "@/lib/planner-credits";
 import { cn } from "@/lib/utils/cn";
 
 const navGroups = [
@@ -62,6 +63,7 @@ function isActive(pathname: string, href: string) {
 }
 
 export function PlannerShell({ children, role = "planner" }: { children: ReactNode; role?: WorkspaceRole }) {
+  const credits = useCreditBalance();
   const pathname = usePathname();
   const home = role === "planner" ? "/planner" : `/${role}`;
   const roleLabel = role[0].toUpperCase() + role.slice(1);
@@ -134,7 +136,7 @@ export function PlannerShell({ children, role = "planner" }: { children: ReactNo
           <div className="flex items-center gap-2">
             <Link href="/planner/credits" className="mr-1 hidden h-9 items-center gap-2 rounded-[var(--radius-md)] px-2 text-xs font-medium text-text-secondary transition-colors hover:bg-background lg:flex">
               <CreditCard aria-hidden="true" className="size-4" />
-              24 credits
+              {credits} {credits === 1 ? "credit" : "credits"}
             </Link>
             <Link href="/planner/notifications" className="relative flex size-10 items-center justify-center rounded-[var(--radius-md)] text-text-secondary transition-colors hover:bg-background" aria-label="Notifications">
               <Bell aria-hidden="true" className="size-[18px]" />

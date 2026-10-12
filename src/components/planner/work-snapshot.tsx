@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { ArrowUpRight, CalendarRange, ClipboardCheck, MessageSquareText, Wallet } from "lucide-react";
-import { usePlannerEvents } from "@/lib/planner-events";
+import { isEventCancelled, usePlannerEvents } from "@/lib/planner-events";
 
 export function WorkSnapshot() {
   const events = usePlannerEvents();
-  const openTasks = events.flatMap((event) => event.sections.tasks).filter((task) => !task.done).length;
+  const activeEvents = events.filter((event) => !isEventCancelled(event));
+  const openTasks = activeEvents.flatMap((event) => event.sections.tasks).filter((task) => !task.done).length;
   const budgetItems = events.flatMap((event) => event.sections.expenses).length;
-  const openDecisions = events.flatMap((event) => event.sections.decisions).filter((decision) => !decision.done).length;
-  const taskEvent = events.find((event) => event.sections.tasks.some((task) => !task.done)) ?? events[0];
+  const openDecisions = activeEvents.flatMap((event) => event.sections.decisions).filter((decision) => !decision.done).length;
+  const taskEvent = activeEvents.find((event) => event.sections.tasks.some((task) => !task.done)) ?? activeEvents[0];
   const budgetEvent = events.find((event) => event.sections.expenses.length) ?? events[0];
-  const decisionEvent = events.find((event) => event.sections.decisions.some((decision) => !decision.done)) ?? events[0];
+  const decisionEvent = activeEvents.find((event) => event.sections.decisions.some((decision) => !decision.done)) ?? activeEvents[0];
   const items = [
     { label: "Events", value: String(events.length), detail: "In your workspace", href: "/planner/events", icon: CalendarRange, surface: "bg-[#edf4ee] border-[#e0ebe2]", ink: "text-[#40654e]", iconTone: "bg-white/75" },
     { label: "Open tasks", value: String(openTasks), detail: "Across your events", href: taskEvent ? `/planner/events/${taskEvent.id}?section=tasks` : "/planner/events", icon: ClipboardCheck, surface: "bg-[#f1eef9] border-[#e8e2f2]", ink: "text-[#705987]", iconTone: "bg-white/75" },

@@ -7,7 +7,7 @@ import { Check, ClipboardList, Plus, Send, Trash2, X } from "lucide-react";
 
 import { QuestionnaireBuilder } from "@/components/planner/questionnaire-builder";
 import { Button } from "@/components/ui/button";
-import { updatePlannerEvent, type PlannerEvent, type SentQuestionnaire } from "@/lib/planner-events";
+import { isEventCancelled, updatePlannerEvent, type PlannerEvent, type SentQuestionnaire } from "@/lib/planner-events";
 import { answerIsPresent, displayAnswer, questionCount, starterTemplates, useQuestionnaireTemplates } from "@/lib/questionnaires";
 import { cn } from "@/lib/utils/cn";
 
@@ -22,6 +22,7 @@ function answeredCount(request: SentQuestionnaire) {
 
 export function EventQuestionnairesTab({ event }: { event: PlannerEvent }) {
   const customTemplates = useQuestionnaireTemplates();
+  const cancelled = isEventCancelled(event);
   const templates = [...starterTemplates, ...customTemplates];
   const sent = [...(event.questionnaires ?? [])].sort((a, b) => b.sentAt.localeCompare(a.sentAt));
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -38,11 +39,11 @@ export function EventQuestionnairesTab({ event }: { event: PlannerEvent }) {
   const total = selected ? questionCount(selected) : 0;
   const answered = selected ? answeredCount(selected) : 0;
   const percentage = total ? Math.round(answered / total * 100) : 0;
-  const showBuilder = sent.length === 0 || builderOpen;
+  const showBuilder = !cancelled && (sent.length === 0 || builderOpen);
 
   function sendTemplate() {
     const template = selectedTemplate;
-    if (!template) return;
+    if (!template || cancelled) return;
     const next: SentQuestionnaire = { id: crypto.randomUUID(), templateId: template.id, title: template.title, category: template.category, sections: structuredClone(template.sections), answers: {}, status: "pending", sentAt: new Date().toISOString() };
     try { updatePlannerEvent(event.id, (current) => ({ ...current, questionnaires: [...(current.questionnaires ?? []), next] })); setSelectedId(next.id); setSectionId(""); setTemplateOpen(false); setTemplateId(""); setBuilderOpen(false); setError(""); }
     catch { setError("This questionnaire couldn’t be saved in this browser. Please try again."); }
@@ -53,7 +54,8 @@ export function EventQuestionnairesTab({ event }: { event: PlannerEvent }) {
     catch { setError("This questionnaire couldn’t be deleted. Please try again."); }
   }
 
-  return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-base font-semibold">Client questionnaires</h3><p className="mt-1 text-xs text-text-secondary">Create a questionnaire or choose a reusable template.</p></div><div className="flex flex-wrap items-center gap-2">{sent.length > 0 && <Button type="button" size="sm" variant="outline" onClick={() => setBuilderOpen((value) => !value)} leadingIcon={<Plus className="size-3.5" aria-hidden="true" />}>{builderOpen ? "Close builder" : "Create questionnaire"}</Button>}<Button type="button" size="sm" onClick={() => setTemplateOpen(true)} leadingIcon={<ClipboardList className="size-3.5" aria-hidden="true" />}>Choose a template</Button></div></div>
+  return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-base font-semibold">Client questionnaires</h3><p className="mt-1 text-xs text-text-secondary">Create a questionnaire or choose a reusable template.</p></div><div className="flex flex-wrap items-center gap-2">{!cancelled && sent.length > 0 && <Button type="button" size="sm" variant="outline" onClick={() => setBuilderOpen((value) => !value)} leadingIcon={builderOpen ? <X className="size-3.5" aria-hidden="true" /> : <Plus className="size-3.5" aria-hidden="true" />}>{builderOpen ? "Close builder" : "Create questionnaire"}</Button>}{!cancelled && <Button type="button" size="sm" onClick={() => setTemplateOpen(true)} leadingIcon={<ClipboardList className="size-3.5" aria-hidden="true" />}>Choose a template</Button>}</div></div>
+    {cancelled && <div className="rounded-lg border border-[#f0dcdc] bg-[#fcf5f5] px-4 py-3 text-xs text-[#824949]">This event is cancelled. Sent questionnaires and answers are kept for reference; new ones can’t be sent unless you reopen the event.</div>}
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#dce7f4] bg-[#f0f6fc] px-4 py-3 text-xs leading-5 text-[#526f8d]"><span>Local preview: questionnaires appear in the Client workspace in this browser. Email or account delivery is not connected yet.</span><Link href="/client" className="shrink-0 font-semibold text-[#315f85] underline underline-offset-2">Open client preview</Link></div>
     {error && <p role="alert" className="rounded-lg bg-error-soft px-3 py-2 text-xs text-error">{error}</p>}
     {showBuilder && <QuestionnaireBuilder event={event} onSent={(id) => { setSelectedId(id); setBuilderOpen(false); setSectionId(""); }} />}

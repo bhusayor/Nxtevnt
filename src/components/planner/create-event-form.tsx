@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, MapPin, UserRound, UsersRound, Wallet } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, CreditCard, MapPin, UserRound, UsersRound, Wallet } from "lucide-react";
 
 import { CoverPicker } from "@/components/planner/cover-picker";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
+import { changeCreditBalance, getCreditBalance, useCreditBalance } from "@/lib/planner-credits";
 import { createPlannerEvent, eventCovers, formatEventDate, formatGroupedDigits, formatNaira, isCustomCover, useBrowserReady, type NewPlannerEvent } from "@/lib/planner-events";
 
 const eventTypes = [
@@ -38,6 +39,7 @@ function PreviewRow({ icon: Icon, label, value }: { icon: typeof CalendarDays; l
 export function CreateEventForm() {
   const router = useRouter();
   const ready = useBrowserReady();
+  const credits = useCreditBalance();
   const [step, setStep] = useState<1 | 2>(1);
   const [values, setValues] = useState<NewPlannerEvent>(initial);
   const [otherType, setOtherType] = useState("");
@@ -65,13 +67,17 @@ export function CreateEventForm() {
 
   function saveEvent(skipAdvanced = false) {
     if (!validateEssentials()) { setStep(1); return; }
+    if (getCreditBalance() < 1) { setSaveError("You need one credit to create an event. Purchase credits to continue."); return; }
     if (!skipAdvanced && values.startTime && values.endTime && values.endTime <= values.startTime) {
       setSaveError("The end time should be later than the start time.");
       return;
     }
     setSaving(true);
     setSaveError("");
+    let creditSpent = false;
     try {
+      creditSpent = changeCreditBalance(-1);
+      if (!creditSpent) { setSaveError("You need one credit to create an event."); setSaving(false); return; }
       const details = skipAdvanced ? { ...initial, name: values.name, type: values.type, date: values.date, location: values.location, image: values.image } : values;
       const created = createPlannerEvent({
         ...details,
@@ -83,6 +89,7 @@ export function CreateEventForm() {
       });
       router.push(`/planner/events/${created.id}`);
     } catch {
+      if (creditSpent) changeCreditBalance(1);
       setSaving(false);
       setSaveError("We couldn’t save your event in this browser. Check that site storage is available and try again.");
     }
@@ -99,6 +106,7 @@ export function CreateEventForm() {
     <div className="mx-auto w-full max-w-[1280px] pb-8">
       <Link href="/planner/events" className="inline-flex min-h-10 items-center gap-2 text-xs font-semibold text-text-secondary transition-colors hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All events</Link>
       <div className="mt-3"><p className="mb-2 text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-brand-primary">Planner workspace / New event</p><h1 className="text-[1.75rem] font-semibold tracking-[-0.045em] text-text-primary sm:text-[2rem]">Let&apos;s bring it to life.</h1><p className="mt-2 text-sm text-text-secondary">Start with the essentials. You can refine every detail later.</p></div>
+      {ready && credits < 1 && <div className="mt-6 flex flex-wrap items-center gap-4 rounded-xl border border-[#efd6bd] bg-[#fff7ed] p-4" role="alert"><span className="flex size-10 items-center justify-center rounded-lg bg-white text-[#a66c36]"><CreditCard className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">You’re out of event credits</p><p className="mt-1 text-xs text-text-secondary">Creating an event uses one credit. Get more credits to continue.</p></div><Link href="/planner/credits" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand-primary px-4 text-xs font-semibold text-white hover:opacity-90">Purchase credits<ArrowRight className="size-3.5" /></Link></div>}
 
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-8">
         <div className="min-w-0 overflow-hidden rounded-[1.25rem] border border-border-subtle bg-white shadow-[0_12px_35px_-30px_rgba(19,40,30,.3)]">
@@ -137,7 +145,7 @@ export function CreateEventForm() {
               </div>
             )}
 
-            {saveError && <p role="alert" className="mt-6 rounded-lg bg-error-soft px-4 py-3 text-xs text-error">{saveError}</p>}
+            {saveError && <p role="alert" className="mt-6 rounded-lg bg-error-soft px-4 py-3 text-xs text-error">{saveError} {credits < 1 && <Link href="/planner/credits" className="font-semibold underline">View credits</Link>}</p>}
             <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border-subtle pt-6 sm:flex-row sm:items-center sm:justify-between">
               {step === 1 ? <Link href="/planner/events" className="inline-flex min-h-10 items-center justify-center px-3 text-sm font-semibold text-text-secondary hover:text-text-primary">Cancel</Link> : <Button type="button" variant="ghost" onClick={() => { setStep(1); setSaveError(""); }} leadingIcon={<ArrowLeft className="size-4" aria-hidden="true" />}>Back</Button>}
               <div className="flex flex-col gap-2 sm:flex-row">{step === 2 && <Button type="button" variant="outline" disabled={saving} onClick={() => saveEvent(true)}>Skip and create</Button>}<Button type="submit" disabled={saving} trailingIcon={step === 1 ? <ArrowRight className="size-4" aria-hidden="true" /> : <CircleCheck className="size-4" aria-hidden="true" />}>{step === 1 ? "Continue" : saving ? "Creating…" : "Create event"}</Button></div>

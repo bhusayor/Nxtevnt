@@ -59,6 +59,8 @@ export type PlannerEvent = {
   description: string;
   image: string;
   createdAt: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
   notes: string;
   noteEntries?: EventNote[];
   questionnaires?: SentQuestionnaire[];
@@ -154,6 +156,24 @@ export function updatePlannerEvent(id: string, update: (event: PlannerEvent) => 
   const index = events.findIndex((event) => event.id === id);
   if (index < 0) return;
   writeEvents(events.map((event, current) => current === index ? update(event) : event));
+}
+
+export function isEventCancelled(event: PlannerEvent) {
+  return Boolean(event.cancelledAt);
+}
+
+export function cancelPlannerEvent(id: string, reason: string) {
+  updatePlannerEvent(id, (event) => ({ ...event, cancelledAt: new Date().toISOString(), cancellationReason: reason.trim() || undefined }));
+}
+
+export function reopenPlannerEvent(id: string) {
+  updatePlannerEvent(id, (event) => ({ ...event, cancelledAt: undefined, cancellationReason: undefined }));
+}
+
+export function deletePlannerEvent(id: string) {
+  const events = readEvents();
+  if (!events.some((event) => event.id === id)) return;
+  writeEvents(events.filter((event) => event.id !== id));
 }
 
 export function formatEventDate(date: string, options?: Intl.DateTimeFormatOptions) {

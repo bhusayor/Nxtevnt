@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
 import { AuthFlowProgress } from "@/components/auth/auth-flow-progress";
 import { AuthFormHeader } from "@/components/auth/auth-form-header";
@@ -12,7 +10,7 @@ import { cn } from "@/lib/utils/cn";
 
 const otpLength = 6;
 
-export function OtpVerificationForm() {
+export function OtpVerificationForm({ mode = "signup" }: { mode?: "signup" | "reset" }) {
   const router = useRouter();
   const [digits, setDigits] = useState<string[]>(Array(otpLength).fill(""));
   const [submitting, setSubmitting] = useState(false);
@@ -53,7 +51,7 @@ export function OtpVerificationForm() {
     event.preventDefault();
     if (!complete) return;
     setSubmitting(true);
-    timerRef.current = setTimeout(() => router.push("/account-type"), 550);
+    timerRef.current = setTimeout(() => router.push(mode === "reset" ? "/reset-password" : "/account-type"), 550);
   }
 
   function resendCode() {
@@ -64,11 +62,11 @@ export function OtpVerificationForm() {
 
   return (
     <div className="space-y-8">
-      <AuthFlowProgress currentStep={2} />
+      {mode === "signup" && <AuthFlowProgress currentStep={2} />}
 
       <AuthFormHeader
-        title="Verify your email"
-        description="Enter the 6-digit code sent to your email address."
+        title={mode === "reset" ? "Enter your reset code" : "Verify your email"}
+        description={mode === "reset" ? "Enter a 6-digit code to continue resetting your password." : "Enter the 6-digit code sent to your email address."}
       />
 
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -99,19 +97,13 @@ export function OtpVerificationForm() {
         </div>
 
         <Button type="submit" size="md" fullWidth className="h-11" disabled={!complete || submitting} loading={submitting}>
-          Verify and continue
+          {mode === "reset" ? "Continue" : "Verify and continue"}
         </Button>
       </form>
 
-      <div className="flex items-center justify-between gap-4 text-sm">
-        <Link href="/signup" className="inline-flex items-center gap-1.5 font-semibold text-text-secondary hover:text-text-primary">
-          <ArrowLeft aria-hidden="true" className="size-4" />
-          Change email
-        </Link>
-        <button type="button" onClick={resendCode} className="font-semibold text-brand-primary hover:underline hover:underline-offset-4">
-          Resend code
-        </button>
-      </div>
+      {mode === "signup" && <div className="flex justify-end text-sm">
+        <button type="button" onClick={resendCode} className="font-semibold text-brand-primary hover:underline hover:underline-offset-4">Resend code</button>
+      </div>}
       <p className="sr-only" aria-live="polite">{announcement}</p>
     </div>
   );

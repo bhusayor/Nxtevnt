@@ -3,21 +3,27 @@
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
-  ArrowLeft, ArrowRight, BookOpenText, CalendarClock, CalendarDays, Check,
-  CheckCheck, ChevronRight, CircleDollarSign, ClipboardCheck,
+  ArrowLeft, ArrowRight, Ban, BookOpenText, CalendarClock, CalendarDays, Check,
+  ChevronRight, CircleDollarSign, ClipboardCheck,
   Clock3, FileText, ImageIcon, Lightbulb, Link2, MapPin, Plus, Scale,
-  Sparkles, Trash2, UsersRound, Wallet,
+  RotateCcw, Sparkles, Trash2, UsersRound, Wallet,
 } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EventDetailsEditor } from "@/components/planner/event-details-editor";
+import { BudgetWorkspace } from "@/components/planner/budget/budget-workspace";
 import { EventNotesQuestionnaires } from "@/components/planner/event-notes-questionnaires";
+import { EventCancellationDialog } from "@/components/planner/event-cancellation-dialog";
+import { deleteBudgetAttachments } from "@/lib/budget-attachments";
+import { deleteBudgetForEvent, useBudgetStore } from "@/lib/planner-budget";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  formatEventDate, formatNaira, isCustomCover, updatePlannerEvent, useBrowserReady, usePlannerEvents,
+  deletePlannerEvent, formatEventDate, formatNaira, isCustomCover, isEventCancelled, reopenPlannerEvent, updatePlannerEvent, useBrowserReady, usePlannerEvents,
   type EventItem, type EventSections, type PlannerEvent,
 } from "@/lib/planner-events";
 import { cn } from "@/lib/utils/cn";
@@ -112,21 +118,35 @@ function CollectionPanel({ event, section }: { event: PlannerEvent; section: Col
   </div>;
 }
 
-function BudgetPanel({ event }: { event: PlannerEvent }) {
-  const spent = event.sections.expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
-  const budget = Number(event.budget) || 0;
-  return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-3"><SectionCard icon={Wallet} label="Estimated budget" value={budget ? formatNaira(budget) : "Not set yet"} tone="bg-[#faf2e9] text-[#90683b]" /><SectionCard icon={CircleDollarSign} label="Recorded expenses" value={formatNaira(spent)} tone="bg-[#eaf3ed] text-brand-primary" /><SectionCard icon={CheckCheck} label="Remaining" value={budget ? formatNaira(budget - spent) : "Set a budget first"} tone="bg-[#edf3f9] text-[#527996]" /></div><CollectionPanel event={event} section="expenses" /></div>;
-}
-
 function MoodboardPanel({ event }: { event: PlannerEvent }) {
   return <div className="space-y-5"><div className="relative h-44 overflow-hidden rounded-xl border border-border-subtle sm:h-56"><Image src={event.image} alt="Current visual direction for this event" fill unoptimized={isCustomCover(event.image)} sizes="(min-width: 1024px) 70vw, 100vw" className="object-cover" /><span className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" /><div className="absolute bottom-4 left-5 text-white"><p className="text-[0.625rem] font-semibold uppercase tracking-widest text-white/80">Your event cover</p><p className="mt-1 text-sm font-semibold">Start with a feeling. Build from here.</p></div></div><CollectionPanel event={event} section="moodboard" /></div>;
 }
 
 export function EventWorkspace({ id, initialSection }: { id: string; initialSection?: string }) {
+  const router = useRouter();
   const events = usePlannerEvents();
+  const budgetStore = useBudgetStore();
   const ready = useBrowserReady();
   const event = events.find((item) => item.id === id);
   const [active, setActive] = useState<SectionId>(sections.some((section) => section.id === initialSection) ? initialSection as SectionId : "overview");
+  const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function confirmDelete() {
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      const attachments = budgetStore.items.filter((item) => item.eventId === id).flatMap((item) => item.attachments.map((attachment) => attachment.id));
+      await deleteBudgetAttachments(attachments);
+      deleteBudgetForEvent(id);
+      deletePlannerEvent(id);
+      router.replace("/planner/events");
+    } catch {
+      setDeleteError("This event couldn’t be deleted in this browser. Please try again.");
+    } finally { setDeleteBusy(false); }
+  }
 
   if (!ready) return <div className="h-96 animate-pulse rounded-xl bg-white" aria-label="Loading event" />;
   if (!event) return <div className="mx-auto max-w-lg rounded-xl border border-border-subtle bg-white p-8 text-center"><CalendarDays className="mx-auto size-9 text-brand-primary" aria-hidden="true" /><h1 className="mt-4 text-xl font-semibold">Event not found</h1><p className="mt-2 text-sm text-text-secondary">This event may be saved in another browser or may have been removed.</p><Link href="/planner/events" className={cn(buttonVariants({ size: "md" }), "mt-5")}>Back to events</Link></div>;
@@ -134,15 +154,17 @@ export function EventWorkspace({ id, initialSection }: { id: string; initialSect
   const section = sections.find((item) => item.id === active)!;
   const SectionIcon = section.icon;
   const isPast = event.date < new Date().toLocaleDateString("sv-SE");
+  const cancelled = isEventCancelled(event);
   return <div className="w-full min-w-0 space-y-6">
-    <Link href="/planner/events" className="inline-flex min-h-9 items-center gap-2 text-xs font-semibold text-text-secondary hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All events</Link>
-    <header className="relative isolate overflow-hidden rounded-[1.25rem] bg-[#294d3b] text-white"><Image src={event.image} alt="" fill priority unoptimized={isCustomCover(event.image)} sizes="(min-width: 1024px) 80vw, 100vw" className="object-cover" /><span className="absolute inset-0 bg-gradient-to-r from-[#142d24]/95 via-[#1d372a]/85 to-black/15" aria-hidden="true" /><div className="relative flex min-h-56 flex-col justify-end px-5 py-6 sm:min-h-64 sm:px-8 sm:py-8"><div className="mb-4 flex flex-wrap items-center gap-2"><span className="rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[0.6875rem] font-semibold backdrop-blur-sm">{event.type}</span><StatusBadge status={isPast ? "past" : "upcoming"} showDot={false} className="bg-white text-brand-primary" /></div><h1 className="max-w-2xl text-[1.75rem] font-semibold tracking-[-0.045em] sm:text-[2.25rem]">{event.name}</h1><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/85"><span className="inline-flex items-center gap-1.5"><CalendarDays className="size-4" aria-hidden="true" />{formatEventDate(event.date)}</span><span className="inline-flex items-center gap-1.5"><MapPin className="size-4" aria-hidden="true" />{event.location || "Location to be confirmed"}</span></div></div></header>
+    <div className="flex flex-wrap items-center justify-between gap-3"><Link href="/planner/events" className="inline-flex min-h-9 items-center gap-2 text-xs font-semibold text-text-secondary hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All events</Link><div className="flex flex-wrap items-center gap-2">{cancelled ? <button type="button" onClick={() => reopenPlannerEvent(event.id)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#cfe1d3] bg-white px-3 text-xs font-semibold text-brand-primary hover:bg-[#eaf3ed]"><RotateCcw className="size-3.5" aria-hidden="true" />Reopen event</button> : <button type="button" onClick={() => setCancelling(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#f0dcdc] bg-white px-3 text-xs font-semibold text-[#a34c4c] hover:bg-[#fcf2f2]"><Ban className="size-3.5" aria-hidden="true" />Cancel event</button>}<button type="button" onClick={() => { setDeleteError(""); setDeleting(true); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#f0dcdc] bg-white px-3 text-xs font-semibold text-[#a34c4c] hover:bg-[#fcf2f2]"><Trash2 className="size-3.5" aria-hidden="true" />Delete event</button></div></div>
+    <header className="relative isolate overflow-hidden rounded-[1.25rem] bg-[#294d3b] text-white"><Image src={event.image} alt="" fill priority unoptimized={isCustomCover(event.image)} sizes="(min-width: 1024px) 80vw, 100vw" className="object-cover" /><span className="absolute inset-0 bg-gradient-to-r from-[#142d24]/95 via-[#1d372a]/85 to-black/15" aria-hidden="true" /><div className="relative flex min-h-56 flex-col justify-end px-5 py-6 sm:min-h-64 sm:px-8 sm:py-8"><div className="mb-4 flex flex-wrap items-center gap-2"><span className="rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[0.6875rem] font-semibold backdrop-blur-sm">{event.type}</span><StatusBadge status={cancelled ? "cancelled" : isPast ? "past" : "upcoming"} showDot={false} className={cancelled ? "bg-white text-[#a34c4c]" : "bg-white text-brand-primary"} /></div><h1 className="max-w-2xl text-[1.75rem] font-semibold tracking-[-0.045em] sm:text-[2.25rem]">{event.name}</h1><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/85"><span className="inline-flex items-center gap-1.5"><CalendarDays className="size-4" aria-hidden="true" />{formatEventDate(event.date)}</span><span className="inline-flex items-center gap-1.5"><MapPin className="size-4" aria-hidden="true" />{event.location || "Location to be confirmed"}</span></div></div></header>
+    {cancelled && <div className="flex items-start gap-3 rounded-xl border border-[#f0dcdc] bg-[#fcf5f5] p-4 text-sm text-[#824949]"><Ban className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><div><p className="font-semibold">This event is cancelled</p><p className="mt-1 text-xs leading-5">It won’t appear in upcoming plans. All planning details remain here{event.cancellationReason ? ` · ${event.cancellationReason}` : "."}</p></div></div>}
     <div className="grid min-w-0 gap-5 lg:grid-cols-[230px_minmax(0,1fr)] xl:gap-7">
       <nav aria-label="Event sections" className="min-w-0 lg:sticky lg:top-24 lg:h-fit lg:rounded-xl lg:border lg:border-border-subtle lg:bg-white lg:p-2"><div className="flex gap-1 overflow-x-auto pb-2 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">{sections.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setActive(item.id)} aria-current={active === item.id ? "page" : undefined} className={cn("flex min-h-10 shrink-0 items-center gap-2.5 rounded-lg px-3 text-xs font-medium transition-colors lg:w-full lg:text-left", active === item.id ? "bg-[#eaf3ed] font-semibold text-brand-primary" : "text-text-secondary hover:bg-background-subtle hover:text-text-primary")}><Icon className="size-[17px] shrink-0" strokeWidth={1.8} aria-hidden="true" />{item.label}</button>; })}</div></nav>
       <div className="min-w-0"><div className="mb-5 flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#eaf3ed] text-brand-primary"><SectionIcon className="size-5" aria-hidden="true" /></span><div><h2 className="text-xl font-semibold tracking-[-0.03em] text-text-primary">{active === "notes" ? "Notes & questionnaires" : section.label}</h2><p className="mt-1 text-xs text-text-secondary">{section.description}</p></div></div>
         {active === "overview" && <><div className="mb-4 flex justify-end"><EventDetailsEditor event={event} /></div><OverviewPanel event={event} onSelect={setActive} /></>}
         {active === "notes" && <EventNotesQuestionnaires key={event.id} event={event} />}
-        {active === "budget" && <BudgetPanel event={event} />}
+        {active === "budget" && <BudgetWorkspace fixedEventId={event.id} embedded />}
         {active === "proposal" && <div className="space-y-5"><div className="flex items-center gap-3 rounded-xl border border-[#e1eaf1] bg-[#f0f5fa] p-4 text-xs text-[#55748b]"><CircleDollarSign className="size-5 shrink-0" aria-hidden="true" />Build a working estimate here. Proposal items stay with this event; they are not sent to anyone automatically.</div><CollectionPanel event={event} section="proposal" /></div>}
         {active === "tasks" && <CollectionPanel event={event} section="tasks" />}
         {active === "moodboard" && <MoodboardPanel event={event} />}
@@ -151,5 +173,7 @@ export function EventWorkspace({ id, initialSection }: { id: string; initialSect
         {active === "files" && <CollectionPanel event={event} section="files" />}
       </div>
     </div>
+    <EventCancellationDialog event={cancelling ? event : null} onClose={() => setCancelling(false)} />
+    <Dialog.Root open={deleting} onOpenChange={(open) => { if (!open && !deleteBusy) setDeleting(false); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-[#10231a]/55 backdrop-blur-[2px]" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-[var(--shadow-lg)] focus:outline-none"><div className="flex items-start justify-between gap-3"><span className="flex size-11 items-center justify-center rounded-xl bg-error-soft text-error"><Trash2 className="size-5" aria-hidden="true" /></span><Dialog.Close asChild><button type="button" disabled={deleteBusy} aria-label="Close" className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-background-subtle">×</button></Dialog.Close></div><Dialog.Title className="mt-4 text-lg font-semibold">Delete {event.name}?</Dialog.Title><Dialog.Description className="mt-2 text-sm leading-6 text-text-secondary">This permanently removes the event, its notes, tasks, questionnaires, budget and attached documents from this browser. This cannot be undone.</Dialog.Description>{deleteError && <p role="alert" className="mt-4 rounded-lg bg-error-soft p-3 text-xs text-error">{deleteError}</p>}<div className="mt-6 flex justify-end gap-2"><Button type="button" size="sm" variant="outline" disabled={deleteBusy} onClick={() => setDeleting(false)}>Keep event</Button><Button type="button" size="sm" disabled={deleteBusy} onClick={() => void confirmDelete()} className="bg-error hover:bg-error/90">{deleteBusy ? "Deleting…" : "Delete event"}</Button></div></Dialog.Content></Dialog.Portal></Dialog.Root>
   </div>;
 }

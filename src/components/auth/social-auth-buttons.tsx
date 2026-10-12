@@ -32,7 +32,7 @@ export function SocialAuthButtons({ mode, disabled = false }: { mode: "signup" |
         router.push("/verify-otp");
         return;
       }
-      setLoading(false);
+      router.push("/planner");
     }, 350);
   }
 
