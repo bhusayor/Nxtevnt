@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowDown, ArrowUp, Check, Copy, Eye, Pencil, Plus, Send, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Copy, Eye, Pencil, Plus, Send, Trash2, X } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { updatePlannerEvent, type PlannerEvent, type QuestionnaireQuestion, type QuestionnaireQuestionType, type QuestionnaireSection, type SentQuestionnaire } from "@/lib/planner-events";

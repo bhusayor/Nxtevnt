@@ -1,4 +1,4 @@
-import { CalendarPlus, MoreHorizontal, Plus } from "lucide-react";
+import { CalendarPlus, MoreHorizontal, Plus } from "@/components/ui/icons";
 
 import { EventsFilterDemo } from "@/app/design-system/events-filter-demo";
 import { EventsTableDemo } from "@/app/design-system/events-table-demo";

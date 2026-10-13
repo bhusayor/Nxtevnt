@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { MessageSquareText, Pin, Plus, Search, Trash2 } from "lucide-react";
+import { MessageSquareText, Pin, Plus, Search, Trash2 } from "@/components/ui/icons";
 
 import { NoteComposerDialog } from "@/components/planner/note-composer";
 import { Button } from "@/components/ui/button";

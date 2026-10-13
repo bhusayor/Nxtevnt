@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@/components/ui/icons";
 
 export function ProfileCompletionPrompt({ profileComplete = false }: { profileComplete?: boolean }) {
   if (profileComplete) return null;

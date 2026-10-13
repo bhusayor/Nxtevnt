@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "@/components/ui/icons";
 
 import { FormField, fieldControlStyles } from "@/components/ui/form-field";
 import { cn } from "@/lib/utils/cn";

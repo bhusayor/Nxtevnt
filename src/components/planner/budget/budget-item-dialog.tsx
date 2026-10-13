@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { CheckCircle2, FileText, Plus, Trash2, UploadCloud, X } from "lucide-react";
+import { CheckCircle2, FileText, Plus, Trash2, UploadCloud, X } from "@/components/ui/icons";
 
 import { BudgetNativeSelect } from "@/components/planner/budget/budget-controls";
 import { BudgetAmountInput, formatBudgetAmountInput } from "@/components/planner/budget/budget-amount-input";

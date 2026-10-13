@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpDown, CalendarRange, SlidersHorizontal, UserRound } from "lucide-react";
+import { ArrowUpDown, CalendarRange, SlidersHorizontal, UserRound } from "@/components/ui/icons";
 
 import { DateInput } from "@/components/ui/date-time-input";
 import { ActiveFilters, FilterBar, FilterChip, FilterDropdown, MobileFilterSheet, ViewSwitcher } from "@/components/ui/filter-bar";

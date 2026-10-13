@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowLeft, ChevronDown, Download, Filter, FolderPlus, Plus, Upload, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, Filter, FolderPlus, Plus, Upload, X } from "@/components/ui/icons";
 
 import { AddBudgetGroupDialog } from "@/components/planner/budget/budget-dialogs";
 import { BudgetNativeSelect } from "@/components/planner/budget/budget-controls";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Construction } from "lucide-react";
+import { ArrowLeft, Construction } from "@/components/ui/icons";
 
 export default async function PlannerPlaceholderPage({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type InputHTMLAttributes } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "@/components/ui/icons";
 
 import { FormField, fieldControlStyles } from "@/components/ui/form-field";
 import { PasswordRequirements } from "@/components/nextevnt/password-requirements";

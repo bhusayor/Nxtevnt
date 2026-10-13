@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCheck, ClipboardList, Plus } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCheck, ClipboardList, Plus } from "@/components/ui/icons";
 
 import { ProfileCompletionPrompt } from "@/components/planner/profile-completion-prompt";
 import { VerificationPrompt } from "@/components/planner/verification-prompt";
@@ -35,7 +35,7 @@ export function EmptyPlannerOverview() {
           <div className="grid gap-3 sm:grid-cols-3">
             {firstSteps.map((step) => {
               const Icon = step.icon;
-              return <div key={step.number} className="flex min-w-0 items-start gap-2.5"><span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#dce9de] bg-white/80 text-[#52765b]"><Icon className="size-4" strokeWidth={1.7} aria-hidden="true" /></span><div className="min-w-0"><p className="text-[0.6875rem] font-semibold leading-4 text-text-primary">{step.title}</p><p className="mt-0.5 text-[0.625rem] leading-4 text-text-secondary">{step.description}</p></div></div>;
+              return <div key={step.number} className="flex min-w-0 items-start gap-2.5"><span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#dce9de] bg-white/80 text-[#52765b]"><Icon className="size-4" weight="bold" aria-hidden="true" /></span><div className="min-w-0"><p className="text-[0.6875rem] font-semibold leading-4 text-text-primary">{step.title}</p><p className="mt-0.5 text-[0.625rem] leading-4 text-text-secondary">{step.description}</p></div></div>;
             })}
           </div>
         </div>

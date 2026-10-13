@@ -1,5 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils/cn";
 

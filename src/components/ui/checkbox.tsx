@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -55,7 +55,7 @@ export function Checkbox({
         )}
       >
         <CheckboxPrimitive.Indicator>
-          <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+          <Check aria-hidden="true" className="size-3.5" weight="bold" />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       <div className="grid gap-0.5">

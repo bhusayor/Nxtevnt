@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCheck, MapPin, NotebookPen, Plus, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCheck, MapPin, NotebookPen, Plus, UsersRound } from "@/components/ui/icons";
 
 import { buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -29,7 +29,7 @@ export function DashboardEventCard({ event, featured = false, adaptiveRow = fals
         <span className="absolute right-4 bottom-4 left-4 flex items-center justify-between gap-2 text-white"><span className="text-xs font-medium">{event.type}</span><span className="rounded-full border border-white/30 bg-black/15 px-2.5 py-1 text-[0.625rem] backdrop-blur-sm">{event.countdown}</span></span>
       </Link>
       <div className={cn("flex min-w-0 flex-1 flex-col p-5", featured && "@min-[680px]/events:justify-center @min-[680px]/events:p-7")}>
-        {featured && <p className="mb-2 flex items-center gap-1.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-brand-primary"><Sparkles className="size-3.5" aria-hidden="true" />{featuredLabel}</p>}
+        {featured && <p className="mb-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-brand-primary">{featuredLabel}</p>}
         <h3 className={cn("min-w-0 text-base font-semibold tracking-[-0.025em] text-text-primary", featured && "text-xl")}><Link href={href} className="hover:text-brand-primary">{event.name}</Link></h3>
         <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-text-secondary"><MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{event.location}</p>
         <div className="mt-3 flex min-h-6 items-center gap-2">{event.client !== "Personal event" && <><span className={cn("flex size-6 items-center justify-center rounded-full text-[0.5625rem] font-semibold", tone.avatar)}>{event.initials}</span><p className="text-xs text-text-secondary"><span className="text-text-tertiary">Client · </span>{event.client}</p></>}</div>
@@ -86,7 +86,7 @@ export function UpcomingEvents({ events }: { events?: readonly DashboardEvent[] 
     <section className="@container/events min-w-0" aria-labelledby="upcoming-events-title">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5"><h2 id="upcoming-events-title" className="text-lg font-semibold tracking-[-0.025em] text-text-primary">Upcoming events</h2><span className="flex size-6 items-center justify-center rounded-full bg-white text-[0.6875rem] font-semibold text-text-secondary ring-1 ring-border-subtle">{source.length}</span></div>
-        {count > 0 && <div className="flex items-center gap-3"><Link href="/planner/events" className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-text-secondary hover:text-brand-primary">View all <ArrowRight aria-hidden="true" className="size-3.5" /></Link><Link href="/planner/create-event" className={cn(buttonVariants({ size: "sm" }), "shrink-0")}><Plus className="size-3.5" aria-hidden="true" />Add event</Link></div>}
+        {count > 0 && <Link href="/planner/events" className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-text-secondary hover:text-brand-primary">View all <ArrowRight aria-hidden="true" className="size-3.5" /></Link>}
       </div>
       {count === 0 ? (
         <div className="grid overflow-hidden rounded-xl border border-border-subtle bg-white @min-[680px]/events:grid-cols-[40%_60%]">

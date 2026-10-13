@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Search } from "@/components/ui/icons";
 
 export function VendorPicker({ value, onChange, vendors }: { value: string; onChange: (value: string) => void; vendors: string[] }) {
   const [open, setOpen] = useState(false);

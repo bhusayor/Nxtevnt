@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { formatEventDate, isEventCancelled, useBrowserReady, usePlannerEvents } from "@/lib/planner-events";

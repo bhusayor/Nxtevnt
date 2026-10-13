@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronDown, LayoutGrid, List, SlidersHorizontal, X } from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, List, SlidersHorizontal, X } from "@/components/ui/icons";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

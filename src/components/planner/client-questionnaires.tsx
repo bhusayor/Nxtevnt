@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ClipboardList, Clock3, Send } from "lucide-react";
+import { ArrowLeft, Check, ClipboardList, Clock3, Send } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { QuestionAnswerField } from "@/components/planner/question-answer-field";

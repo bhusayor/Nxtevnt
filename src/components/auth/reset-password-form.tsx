@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/ui/icons";
 
 import { AuthFormHeader } from "@/components/auth/auth-form-header";
 import { PasswordField } from "@/components/auth/password-field";

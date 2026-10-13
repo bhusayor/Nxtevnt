@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, MapPin } from "lucide-react";
+import { ArrowUpRight, CalendarDays, MapPin } from "@/components/ui/icons";
 
 import { formatEventDate, isCustomCover, isEventCancelled, type PlannerEvent } from "@/lib/planner-events";
 

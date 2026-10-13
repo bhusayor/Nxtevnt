@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, ChevronDown, ChevronRight, FileText, MoreHorizontal, Plus, ReceiptText, StickyNote } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronRight, FileText, MoreHorizontal, Plus, ReceiptText, StickyNote } from "@/components/ui/icons";
 
 import { BudgetGroupIcon } from "@/components/planner/budget/budget-group-icon";
 import { Button } from "@/components/ui/button";

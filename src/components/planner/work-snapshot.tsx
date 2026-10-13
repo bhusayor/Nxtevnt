@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, CalendarRange, ClipboardCheck, MessageSquareText, Wallet } from "lucide-react";
+import { ArrowUpRight, CalendarRange, ClipboardCheck, MessageSquareText, Wallet } from "@/components/ui/icons";
 import { isEventCancelled, usePlannerEvents } from "@/lib/planner-events";
 
 export function WorkSnapshot() {
@@ -25,7 +25,7 @@ export function WorkSnapshot() {
         const Icon = item.icon;
         return (
           <Link key={item.label} href={item.href} className={`group rounded-xl border p-4 transition-[border-color,box-shadow] hover:border-border-strong/40 hover:shadow-[var(--shadow-xs)] sm:p-5 ${item.surface}`}>
-            <div className="flex items-center justify-between gap-2"><span className={`flex size-9 items-center justify-center rounded-lg ${item.iconTone} ${item.ink}`}><Icon className="size-[18px]" strokeWidth={1.7} aria-hidden="true" /></span><ArrowUpRight className={`size-4 opacity-50 transition-opacity group-hover:opacity-100 ${item.ink}`} aria-hidden="true" /></div>
+            <div className="flex items-center justify-between gap-2"><span className={`flex size-9 items-center justify-center rounded-lg ${item.iconTone} ${item.ink}`}><Icon className="size-[18px]" weight="bold" aria-hidden="true" /></span><ArrowUpRight className={`size-4 opacity-50 transition-opacity group-hover:opacity-100 ${item.ink}`} aria-hidden="true" /></div>
             <div className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1"><strong className="text-[1.75rem] font-semibold leading-none tracking-[-0.045em] text-text-primary">{item.value}</strong><span className="text-xs font-medium text-text-secondary">{item.label}</span></div>
             <p className="mt-2 text-[0.6875rem] leading-4 text-text-secondary">{item.detail}</p>
           </Link>

@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -24,7 +24,7 @@ export function AuthFlowProgress({ currentStep }: { currentStep: 2 | 3 }) {
                 )}
                 aria-current={active ? "step" : undefined}
               >
-                {complete ? <Check aria-hidden="true" className="size-3" strokeWidth={3} /> : stepNumber}
+                {complete ? <Check aria-hidden="true" className="size-3" weight="bold" /> : stepNumber}
               </span>
               {index < steps.length - 1 ? (
                 <span className={cn("h-px w-full", complete ? "bg-brand-primary" : "bg-border-default")} aria-hidden="true" />

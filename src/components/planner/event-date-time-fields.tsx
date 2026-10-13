@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "@/components/ui/icons";
 
 import { FormField, fieldControlStyles } from "@/components/ui/form-field";
 import { cn } from "@/lib/utils/cn";

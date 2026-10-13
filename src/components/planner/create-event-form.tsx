@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, CreditCard, MapPin, UserRound, UsersRound, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, CreditCard, MapPin, UserRound, UsersRound, Wallet, type PhosphorIcon } from "@/components/ui/icons";
 
 import { CoverPicker } from "@/components/planner/cover-picker";
 import { EventDatePicker, EventTimePicker } from "@/components/planner/event-date-time-fields";
@@ -33,7 +33,7 @@ const initial: NewPlannerEvent = {
 
 type EssentialField = "name" | "type" | "otherType" | "date";
 
-function PreviewRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function PreviewRow({ icon: Icon, label, value }: { icon: PhosphorIcon; label: string; value: string }) {
   return <div className="flex items-start gap-3 py-2.5"><span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#f1f5f1] text-brand-primary"><Icon className="size-3.5" aria-hidden="true" /></span><div className="min-w-0 flex-1"><p className="text-[0.625rem] font-semibold uppercase tracking-wide text-text-tertiary">{label}</p><p className={cn("mt-0.5 break-words text-xs font-medium", value === "Not added yet" ? "text-text-tertiary" : "text-text-primary")}>{value}</p></div></div>;
 }
 
@@ -110,7 +110,10 @@ export function CreateEventForm() {
     <div className="mx-auto w-full max-w-[1280px] pb-8">
       <Link href="/planner/events" className="inline-flex min-h-10 items-center gap-2 text-xs font-semibold text-text-secondary transition-colors hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All events</Link>
       <div className="mt-3"><p className="mb-2 text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-brand-primary">Planner workspace / New event</p><h1 className="text-[1.75rem] font-semibold tracking-[-0.045em] text-text-primary sm:text-[2rem]">Let&apos;s bring it to life.</h1><p className="mt-2 text-sm text-text-secondary">Start with the essentials. You can refine every detail later.</p></div>
-      {ready && credits < 1 && <div className="mt-6 flex flex-wrap items-center gap-4 rounded-xl border border-[#efd6bd] bg-[#fff8ed] p-4 sm:p-5" role="alert"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-[#a66c36]"><CreditCard className="size-5" aria-hidden="true" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-text-primary">You’re low on event credits</p><p className="mt-1 text-xs leading-5 text-text-secondary">You can fill in the essentials now. Purchase a credit to continue and create this event.</p></div><Link href="/planner/credits" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-[#e9c9a5] bg-white px-4 text-xs font-semibold text-[#85572e] transition-colors hover:bg-[#fff3e2]">Purchase credits <ArrowRight className="size-3.5" aria-hidden="true" /></Link></div>}
+      {ready && credits < 1 && <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-[#efd6bd] bg-[#fff8ed] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-5" role="alert">
+        <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#a66c36] shadow-sm"><CreditCard className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-sm font-semibold leading-5 text-text-primary">You’re out of event credits</p><p className="mt-1 text-xs leading-5 text-text-secondary">Fill in the essentials now. You’ll need 1 credit to continue and create this event.</p></div></div>
+        <Link href="/planner/credits" className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[#e9c9a5] bg-white px-4 text-xs font-semibold text-[#85572e] transition-colors hover:bg-[#fff3e2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a66c36] sm:w-auto">Buy credits <ArrowRight className="size-4" aria-hidden="true" /></Link>
+      </div>}
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-8">
         <div className="min-w-0 overflow-hidden rounded-[1.25rem] border border-border-subtle bg-white shadow-[0_12px_35px_-30px_rgba(19,40,30,.3)]">
           <div className="border-b border-border-subtle px-5 py-5 sm:px-8">

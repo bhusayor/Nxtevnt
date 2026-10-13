@@ -1,5 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "@/components/ui/icons";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils/cn";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, MessageSquareText } from "lucide-react";
+import { ClipboardList, MessageSquareText } from "@/components/ui/icons";
 
 import { EventNotesTab } from "@/components/planner/event-notes-tab";
 import { EventQuestionnairesTab } from "@/components/planner/event-questionnaires-tab";

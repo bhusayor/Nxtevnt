@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ClipboardList, Plus, Send, Trash2, X } from "lucide-react";
+import { Check, ClipboardList, Plus, Send, Trash2, X } from "@/components/ui/icons";
 
 import { QuestionnaireBuilder } from "@/components/planner/questionnaire-builder";
 import { Button } from "@/components/ui/button";

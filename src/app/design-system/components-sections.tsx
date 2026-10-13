@@ -1,4 +1,4 @@
-import { ArrowRight, MoreHorizontal, Plus, Save } from "lucide-react";
+import { ArrowRight, MoreHorizontal, Plus, Save } from "@/components/ui/icons";
 
 import { DesignSystemSection, ShowcasePanel } from "@/components/nextevnt/design-system-section";
 import { Badge } from "@/components/ui/badge";

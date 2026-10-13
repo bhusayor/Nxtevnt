@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, BriefcaseBusiness, CalendarRange, Handshake, type LucideIcon } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CalendarRange, Handshake, type PhosphorIcon } from "@/components/ui/icons";
 
 import { AuthFlowProgress } from "@/components/auth/auth-flow-progress";
 import { cn } from "@/lib/utils/cn";
@@ -12,7 +12,7 @@ type Role = {
   id: AccountType;
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon: PhosphorIcon;
   iconClassName: string;
 };
 
@@ -71,7 +71,7 @@ export function AccountTypeSelection() {
               className="group relative flex items-center gap-4 rounded-[var(--radius-xl)] border border-border-default bg-surface p-4 text-left shadow-[var(--shadow-xs)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-brand-primary/45 hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-primary/15"
             >
               <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-lg)] transition-transform duration-200 group-hover:scale-105", role.iconClassName)}>
-                <Icon aria-hidden="true" className="size-6" strokeWidth={1.8} />
+                <Icon aria-hidden="true" className="size-6" weight="bold" />
               </span>
 
               <span className="min-w-0 flex-1">

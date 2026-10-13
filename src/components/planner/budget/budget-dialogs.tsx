@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Plus, X } from "lucide-react";
+import { Plus, X } from "@/components/ui/icons";
 
 import { BudgetNativeSelect } from "@/components/planner/budget/budget-controls";
 import { BudgetGroupIcon } from "@/components/planner/budget/budget-group-icon";

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CalendarPlus, Check, CircleAlert, CloudOff, FileClock, Info, SearchX, TriangleAlert, X } from "lucide-react";
+import { CalendarPlus, Check, CircleAlert, CloudOff, FileClock, Info, SearchX, TriangleAlert, X } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";

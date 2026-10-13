@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowLeft, Check, Download, FileSpreadsheet, Upload, X } from "lucide-react";
+import { ArrowLeft, Check, Download, FileSpreadsheet, Upload, X } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { analyseImport, autoMapColumns, budgetTemplateCsv, importFields, readBudgetFile, type BudgetSheet, type ImportCandidate, type ImportField, type ImportMapping } from "@/lib/budget-import";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ChangeEvent, type DragEvent } from "react";
-import { FileImage, UploadCloud } from "lucide-react";
+import { FileImage, UploadCloud } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils/cn";
 

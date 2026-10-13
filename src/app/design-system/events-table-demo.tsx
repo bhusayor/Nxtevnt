@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin } from "@/components/ui/icons";
 
 import { Badge } from "@/components/ui/badge";
 import { DataTable, TableActionItem, TableActions, TableBody, TableCell, TableHead, TableHeader, TablePagination, TableRow } from "@/components/ui/data-table";

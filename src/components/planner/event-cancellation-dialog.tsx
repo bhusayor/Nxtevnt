@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Ban, X } from "lucide-react";
+import { Ban, X } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { cancelPlannerEvent, type PlannerEvent } from "@/lib/planner-events";

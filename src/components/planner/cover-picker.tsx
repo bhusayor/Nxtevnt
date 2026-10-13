@@ -2,7 +2,7 @@
 
 import { useId, useState, type ChangeEvent } from "react";
 import Image from "next/image";
-import { Check, ImagePlus, LoaderCircle } from "lucide-react";
+import { Check, ImagePlus, LoaderCircle } from "@/components/ui/icons";
 
 import { eventCovers, isCustomCover } from "@/lib/planner-events";
 import { cn } from "@/lib/utils/cn";

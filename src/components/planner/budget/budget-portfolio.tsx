@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Download, FolderOpen, Plus, ReceiptText, Search, Upload, Wallet } from "lucide-react";
+import { ArrowRight, Download, FolderOpen, Plus, ReceiptText, Search, Upload, Wallet } from "@/components/ui/icons";
 
 import { BudgetNativeSelect } from "@/components/planner/budget/budget-controls";
 import { BookingsTable, BudgetSummary, UpcomingPayments } from "@/components/planner/budget/budget-sections";

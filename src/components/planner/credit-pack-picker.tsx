@@ -1,15 +1,15 @@
 "use client";
 
-import { ArrowRight, Check, Clock3, Gem, Rocket, Sparkles, Ticket, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, Clock3, Gem, Rocket, CalendarDays, Ticket, type PhosphorIcon } from "@/components/ui/icons";
 
 import { creditPacks, type CreditPackId } from "@/lib/planner-credits";
 import { cn } from "@/lib/utils/cn";
 
 const naira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
-const packStyles: Record<CreditPackId, { icon: LucideIcon; surface: string; foreground: string; muted: string; outline: string }> = {
+const packStyles: Record<CreditPackId, { icon: PhosphorIcon; surface: string; foreground: string; muted: string; outline: string }> = {
   single: { icon: Ticket, surface: "bg-[#edf4f0]", foreground: "text-[#244e3c]", muted: "text-[#647c6d]", outline: "border-[#85a994]" },
-  starter: { icon: Sparkles, surface: "bg-[#f7f0e6]", foreground: "text-[#765a3b]", muted: "text-[#9f876c]", outline: "border-[#c7a47c]" },
+  starter: { icon: CalendarDays, surface: "bg-[#f7f0e6]", foreground: "text-[#765a3b]", muted: "text-[#9f876c]", outline: "border-[#c7a47c]" },
   growth: { icon: Rocket, surface: "bg-[#244e3c]", foreground: "text-white", muted: "text-[#c7dfcd]", outline: "border-[#244e3c]" },
   pro: { icon: Gem, surface: "bg-[#f0eef8]", foreground: "text-[#51466c]", muted: "text-[#82799a]", outline: "border-[#a79ac3]" },
 };
@@ -29,7 +29,7 @@ export function CreditPackPicker({ balance, selectedPackId, onSelect, onContinue
     <section className="relative isolate overflow-hidden rounded-[1.5rem] border border-[#e5e8de] bg-gradient-to-r from-[#f1f6ec] via-[#f9f7ef] to-[#f7eee6] px-6 py-8 sm:px-9 sm:py-10">
       <div className="pointer-events-none absolute -right-20 -top-28 size-72 rounded-full border-[45px] border-white/50" aria-hidden="true" />
       <div className="relative max-w-2xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4d5] bg-white/70 px-3 py-1.5 text-[0.6875rem] font-semibold text-brand-primary"><Sparkles className="size-3.5" aria-hidden="true" />Room for your next moment</span>
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4d5] bg-white/70 px-3 py-1.5 text-[0.6875rem] font-semibold text-brand-primary"><CalendarDays className="size-3.5" aria-hidden="true" />Room for your next moment</span>
         <h2 className="mt-5 max-w-xl text-[1.75rem] font-semibold leading-tight tracking-[-0.045em] text-text-primary sm:text-[2.25rem]">Every great event starts with a little room to create.</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-text-secondary">Choose the number of events you&apos;re planning for. One credit opens one event workspace; purchased credits stay available for 12 months.</p>
       </div>

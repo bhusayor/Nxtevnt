@@ -1,7 +1,7 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode, TableHTMLAttributes, ThHTMLAttributes, TdHTMLAttributes } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal } from "@/components/ui/icons";
 
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils/cn";

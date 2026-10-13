@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Monitor, Smartphone } from "lucide-react";
+import { ArrowLeft, Monitor, Smartphone } from "@/components/ui/icons";
 import { UpcomingEvents } from "@/components/planner/upcoming-events";
 import { overviewEvents } from "@/components/planner/overview-data";
 import { Button } from "@/components/ui/button";

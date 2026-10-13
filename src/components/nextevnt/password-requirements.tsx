@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, X } from "@/components/ui/icons";
 
 import { passwordRequirements } from "@/lib/validation/password";
 import { cn } from "@/lib/utils/cn";
@@ -20,7 +20,7 @@ export function PasswordRequirements({ password, className }: PasswordRequiremen
           return (
             <li key={requirement.id} className={cn("flex items-center gap-2 text-xs", satisfied ? "text-success" : "text-text-tertiary")}>
               <span className={cn("flex size-4 items-center justify-center rounded-full", satisfied ? "bg-success-soft text-success" : "bg-error-soft text-error")} aria-hidden="true">
-                <Icon className="size-2.5" strokeWidth={3} />
+                <Icon className="size-2.5" weight="bold" />
               </span>
               {requirement.label}
             </li>

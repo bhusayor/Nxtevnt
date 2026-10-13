@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CheckCheck, ClipboardCheck, Scale } from "lucide-react";
+import { ArrowUpRight, CheckCheck, ClipboardCheck, Scale } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { isEventCancelled, usePlannerEvents } from "@/lib/planner-events";

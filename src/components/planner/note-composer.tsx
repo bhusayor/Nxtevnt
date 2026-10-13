@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Bold, Italic, Link2, List, Send, Smile, Strikethrough, Underline, X } from "lucide-react";
+import { Bold, Italic, Link2, List, Send, Smile, Strikethrough, Underline, X } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 

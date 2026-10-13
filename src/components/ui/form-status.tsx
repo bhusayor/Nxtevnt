@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Cloud, CloudOff, LoaderCircle } from "lucide-react";
+import { AlertCircle, Check, Cloud, CloudOff, LoaderCircle } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils/cn";
 

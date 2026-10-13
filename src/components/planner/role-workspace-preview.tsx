@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, HeartHandshake } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, HeartHandshake } from "@/components/ui/icons";
 
 import { PlannerShell } from "@/components/planner/planner-shell";
 import { ClientQuestionnaires } from "@/components/planner/client-questionnaires";

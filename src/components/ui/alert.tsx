@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from "@/components/ui/icons";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils/cn";

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Pencil, X } from "lucide-react";
+import { Pencil, X } from "@/components/ui/icons";
 
 import { CoverPicker } from "@/components/planner/cover-picker";
 import { Button } from "@/components/ui/button";

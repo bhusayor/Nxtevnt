@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BadgeCheck, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, ShieldCheck } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -38,7 +38,7 @@ export function VerificationPrompt() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3.5">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-white bg-white/80 text-[#5180af] shadow-[0_2px_8px_-5px_rgba(49,95,120,0.3)]">
-            {started ? <BadgeCheck aria-hidden="true" className="size-6" strokeWidth={1.6} /> : <ShieldCheck aria-hidden="true" className="size-6" strokeWidth={1.6} />}
+            {started ? <BadgeCheck aria-hidden="true" className="size-6" weight="regular" /> : <ShieldCheck aria-hidden="true" className="size-6" weight="regular" />}
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2">

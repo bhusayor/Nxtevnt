@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ClipboardList, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardList, Trash2 } from "@/components/ui/icons";
 
 import { QuestionnaireBuilder } from "@/components/planner/questionnaire-builder";
 import { deleteQuestionnaireTemplate, questionCount, starterTemplates, useQuestionnaireTemplates } from "@/lib/questionnaires";

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Building2, IdCard, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Building2, IdCard, ShieldCheck } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
   title: "Planner verification",

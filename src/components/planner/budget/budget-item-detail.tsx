@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { CalendarDays, Download, Eye, FileImage, FileSpreadsheet, FileText, Pencil, StickyNote, X } from "lucide-react";
+import { CalendarDays, Download, Eye, FileImage, FileSpreadsheet, FileText, Pencil, StickyNote, X } from "@/components/ui/icons";
 
 import { BudgetStatusBadge, VendorStatusBadge } from "@/components/planner/budget/budget-sections";
 import { Button } from "@/components/ui/button";
