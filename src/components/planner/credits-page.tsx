@@ -25,10 +25,10 @@ function EmptyHistory({ kind, onBuy }: { kind: HistoryView; onBuy: () => void })
   return <div className="rounded-2xl border border-dashed border-border-default bg-white px-6 py-14 text-center"><span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#edf4ee] text-brand-primary">{kind === "events" ? <Ticket className="size-5" aria-hidden="true" /> : <ReceiptText className="size-5" aria-hidden="true" />}</span><h3 className="mt-5 text-base font-semibold">{kind === "events" ? "No event credits used yet" : "No credit purchases yet"}</h3><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-text-secondary">{kind === "events" ? "When you create an event with a credit, it will appear here." : "Your credit packs and payment references will appear here after a demo purchase."}</p>{kind === "purchases" && <Button type="button" size="sm" className="mt-5" onClick={onBuy}>Explore credit packs</Button>}</div>;
 }
 
-export function CreditsPage() {
+export function CreditsPage({ initialView = "overview" }: { initialView?: PageView }) {
   const balance = useCreditBalance();
   const wallet = useCreditWallet();
-  const [view, setView] = useState<PageView>("overview");
+  const [view, setView] = useState<PageView>(initialView);
   const [historyView, setHistoryView] = useState<HistoryView>("events");
   const [buyStage, setBuyStage] = useState<BuyStage>("choose");
   const [selectedPackId, setSelectedPackId] = useState<CreditPackId>("growth");

@@ -44,7 +44,8 @@ export function PlannerEventsList() {
   const cancelled = sorted.filter(isEventCancelled).reverse();
   const selected = tab === "upcoming" ? upcoming : tab === "completed" ? completed : tab === "cancelled" ? cancelled : sorted;
   const search = query.trim().toLowerCase();
-  const filtered = selected.filter((event) => `${event.name} ${event.type} ${event.location} ${event.clientName}`.toLowerCase().includes(search));
+  const priorityOrder = { high: 0, standard: 1, low: 2 };
+  const filtered = selected.filter((event) => `${event.name} ${event.type} ${event.location} ${event.clientName}`.toLowerCase().includes(search)).sort((first, second) => (priorityOrder[first.priority ?? "standard"] - priorityOrder[second.priority ?? "standard"]) || first.date.localeCompare(second.date));
   const calendarFocusDate = tab === "completed" ? filtered[0]?.date : tab === "upcoming" ? filtered[0]?.date : upcoming[0]?.date ?? filtered.at(-1)?.date;
   const tabs = [{ id: "all" as const, label: "All events", count: events.length }, { id: "upcoming" as const, label: "Upcoming", count: upcoming.length }, { id: "completed" as const, label: "Completed", count: completed.length }, { id: "cancelled" as const, label: "Cancelled", count: cancelled.length }];
   const views = [{ id: "cards" as const, label: "Cards view", icon: LayoutGrid }, { id: "calendar" as const, label: "Calendar view", icon: CalendarDays }, { id: "list" as const, label: "List view", icon: List }];

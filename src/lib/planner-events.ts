@@ -10,6 +10,7 @@ export type EventItem = {
   time?: string;
   url?: string;
   done?: boolean;
+  dueDate?: string;
 };
 
 export type EventSections = {
@@ -56,6 +57,11 @@ export type PlannerEvent = {
   clientName: string;
   guestCount: string;
   budget: string;
+  budgetTemplateId?: string;
+  targetBudget?: string;
+  milestoneTemplateId?: string;
+  assignedTeamMember?: string;
+  priority?: "high" | "standard" | "low";
   description: string;
   image: string;
   createdAt: string;
@@ -67,7 +73,7 @@ export type PlannerEvent = {
   sections: EventSections;
 };
 
-export type NewPlannerEvent = Pick<PlannerEvent, "name" | "type" | "date" | "startTime" | "endTime" | "location" | "clientName" | "guestCount" | "budget" | "description" | "image">;
+export type NewPlannerEvent = Pick<PlannerEvent, "name" | "type" | "date" | "startTime" | "endTime" | "location" | "clientName" | "guestCount" | "budget" | "description" | "image"> & Pick<PlannerEvent, "budgetTemplateId" | "targetBudget" | "milestoneTemplateId" | "assignedTeamMember" | "priority">;
 
 export const eventCovers = [
   { src: "/images/auth/nigerian-wedding-party.jpg", label: "Celebration" },
@@ -132,7 +138,7 @@ export function useBrowserReady() {
   return useSyncExternalStore(subscribeNoop, () => true, () => false);
 }
 
-export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUID()): PlannerEvent {
+export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUID(), initialTasks: EventItem[] = []): PlannerEvent {
   const event: PlannerEvent = {
     ...input,
     id,
@@ -140,7 +146,7 @@ export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUI
     notes: "",
     noteEntries: [],
     questionnaires: [],
-    sections: { tasks: [], expenses: [], proposal: [], moodboard: [], agenda: [], decisions: [], files: [] },
+    sections: { tasks: initialTasks, expenses: [], proposal: [], moodboard: [], agenda: [], decisions: [], files: [] },
   };
   writeEvents([event, ...readEvents()]);
   return event;

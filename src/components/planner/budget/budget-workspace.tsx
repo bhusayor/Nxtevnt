@@ -54,7 +54,7 @@ export function BudgetWorkspace({ fixedEventId, embedded = false, unassignedOnly
   const allGroups = [...store.groups, ...legacyBudgetGroups(events)];
   const allItems = [...store.items, ...legacyBudgetItems(events, store)];
   const event = events.find((entry) => entry.id === eventId);
-  const clientBudget = currency === "NGN" && event ? Number(event.budget) || null : null;
+  const clientBudget = currency === "NGN" && event ? Number(event.targetBudget || (!event.budgetTemplateId ? event.budget : "")) || null : null;
   const eventNames = new Map(events.map((entry) => [entry.id, entry.name]));
   const searchValue = search.toLowerCase().trim();
   const matchedItems = items.filter((item) => {

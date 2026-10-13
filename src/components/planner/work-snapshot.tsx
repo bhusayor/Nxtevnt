@@ -2,21 +2,27 @@
 
 import Link from "next/link";
 import { ArrowUpRight, CalendarRange, ClipboardCheck, MessageSquareText, Wallet } from "@/components/ui/icons";
+import { installmentPayments, itemBalance, legacyBudgetItems, useBudgetStore } from "@/lib/planner-budget";
 import { isEventCancelled, usePlannerEvents } from "@/lib/planner-events";
 
 export function WorkSnapshot() {
   const events = usePlannerEvents();
+  const budgetStore = useBudgetStore();
   const activeEvents = events.filter((event) => !isEventCancelled(event));
   const openTasks = activeEvents.flatMap((event) => event.sections.tasks).filter((task) => !task.done).length;
-  const budgetItems = events.flatMap((event) => event.sections.expenses).length;
+  const activeIds = new Set(activeEvents.map((event) => event.id));
+  const today = new Date().toLocaleDateString("sv-SE");
+  const vendorPaymentsDue = [...budgetStore.items, ...legacyBudgetItems(events, budgetStore)].filter((item) => item.eventId && activeIds.has(item.eventId) && item.vendorStatus === "booked" && itemBalance(item) > 0 && item.status !== "cancelled").reduce((count, item) => {
+    if (item.installments.length) return count + installmentPayments(item).filter((payment) => payment.due > 0 && payment.dueDate <= today).length;
+    return count + (item.paymentDate && item.paymentDate <= today ? 1 : 0);
+  }, 0);
   const openDecisions = activeEvents.flatMap((event) => event.sections.decisions).filter((decision) => !decision.done).length;
   const taskEvent = activeEvents.find((event) => event.sections.tasks.some((task) => !task.done)) ?? activeEvents[0];
-  const budgetEvent = events.find((event) => event.sections.expenses.length) ?? events[0];
   const decisionEvent = activeEvents.find((event) => event.sections.decisions.some((decision) => !decision.done)) ?? activeEvents[0];
   const items = [
     { label: "Events", value: String(events.length), detail: "In your workspace", href: "/planner/events", icon: CalendarRange, surface: "bg-[#edf4ee] border-[#e0ebe2]", ink: "text-[#40654e]", iconTone: "bg-white/75" },
     { label: "Open tasks", value: String(openTasks), detail: "Across your events", href: taskEvent ? `/planner/events/${taskEvent.id}?section=tasks` : "/planner/events", icon: ClipboardCheck, surface: "bg-[#f1eef9] border-[#e8e2f2]", ink: "text-[#705987]", iconTone: "bg-white/75" },
-    { label: "Budget items", value: String(budgetItems), detail: "Costs recorded", href: budgetEvent ? `/planner/events/${budgetEvent.id}?section=budget` : "/planner/events", icon: Wallet, surface: "bg-[#faf1e5] border-[#f0e6d6]", ink: "text-[#8a6537]", iconTone: "bg-white/75" },
+    { label: "Vendor payments due", value: String(vendorPaymentsDue), detail: "Unpaid and due today or earlier", href: "/planner/budget", icon: Wallet, surface: "bg-[#faf1e5] border-[#f0e6d6]", ink: "text-[#8a6537]", iconTone: "bg-white/75" },
     { label: "Decisions", value: String(openDecisions), detail: "Waiting on a call", href: decisionEvent ? `/planner/events/${decisionEvent.id}?section=decisions` : "/planner/events", icon: MessageSquareText, surface: "bg-[#eaf2f8] border-[#dfe9f1]", ink: "text-[#446d8b]", iconTone: "bg-white/75" },
   ];
   return (
