@@ -1,8 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCheck, ClipboardList, Plus } from "@/components/ui/icons";
+import { CalendarDays, CheckCheck, ClipboardList, Plus } from "@/components/ui/icons";
 
-import { ProfileCompletionPrompt } from "@/components/planner/profile-completion-prompt";
 import { VerificationPrompt } from "@/components/planner/verification-prompt";
 import { WorkSnapshot } from "@/components/planner/work-snapshot";
 import { buttonVariants } from "@/components/ui/button";
@@ -16,6 +15,7 @@ const firstSteps = [
 
 export function EmptyPlannerOverview() {
   return <div className="space-y-7">
+    <VerificationPrompt />
     <WorkSnapshot />
 
     <section aria-labelledby="first-event-title" className="grid min-w-0 overflow-hidden rounded-[1.5rem] border border-[#dce9de] bg-gradient-to-br from-[#f0f7f1] via-[#f8faf6] to-[#fbf5ed] shadow-[0_14px_44px_-36px_rgba(35,70,48,0.28)] lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
@@ -49,11 +49,6 @@ export function EmptyPlannerOverview() {
           <p className="mt-1 text-sm font-medium leading-5">A great event begins with a plan worth sharing.</p>
         </div>
       </div>
-    </section>
-
-    <section aria-labelledby="setup-title" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 id="setup-title" className="text-lg font-semibold tracking-[-0.025em] text-text-primary">Make the workspace yours</h2><p className="mt-1 text-xs text-text-secondary">A couple of things you can complete whenever you’re ready.</p></div><span className="inline-flex items-center gap-1 text-[0.6875rem] text-text-tertiary">Your event can be created first <ArrowRight className="size-3.5" aria-hidden="true" /></span></div>
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]"><VerificationPrompt /><ProfileCompletionPrompt /></div>
     </section>
   </div>;
 }

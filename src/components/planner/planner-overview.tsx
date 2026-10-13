@@ -3,9 +3,8 @@
 import { AttentionQueue } from "@/components/planner/attention-queue";
 import { EmptyPlannerOverview } from "@/components/planner/empty-planner-overview";
 import { OverviewHeader } from "@/components/planner/overview-header";
-import { ProfileCompletionPrompt } from "@/components/planner/profile-completion-prompt";
+import { PlanningToolkit } from "@/components/planner/planning-toolkit";
 import { UpcomingEvents } from "@/components/planner/upcoming-events";
-import { UpNextTimeline } from "@/components/planner/up-next-timeline";
 import { VerificationPrompt } from "@/components/planner/verification-prompt";
 import { WeekSchedule } from "@/components/planner/week-schedule";
 import { WorkSnapshot } from "@/components/planner/work-snapshot";
@@ -20,9 +19,9 @@ export function PlannerOverview() {
       <VerificationPrompt />
       <WorkSnapshot />
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="contents min-w-0 xl:order-1 xl:block xl:space-y-6"><div className="order-1 min-w-0"><AttentionQueue /></div><div className="order-4 min-w-0"><WeekSchedule /></div></div>
-        <div className="contents min-w-0 xl:order-2 xl:block xl:space-y-5"><div className="order-2 min-w-0"><UpNextTimeline /></div><div className="order-5 min-w-0"><ProfileCompletionPrompt /></div></div>
-        <div className="order-3 min-w-0 xl:order-first xl:col-span-2"><UpcomingEvents /></div>
+        <div className="contents min-w-0 xl:order-2 xl:block xl:space-y-6"><div className="order-2 min-w-0"><AttentionQueue /></div><div className="order-4 min-w-0"><WeekSchedule /></div></div>
+        <div className="order-3 min-w-0 xl:order-3"><PlanningToolkit /></div>
+        <div className="order-1 min-w-0 xl:order-first xl:col-span-2"><UpcomingEvents /></div>
       </div>
     </>}
   </div>;

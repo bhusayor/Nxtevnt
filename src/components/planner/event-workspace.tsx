@@ -122,13 +122,14 @@ function MoodboardPanel({ event }: { event: PlannerEvent }) {
   return <div className="space-y-5"><div className="relative h-44 overflow-hidden rounded-xl border border-border-subtle sm:h-56"><Image src={event.image} alt="Current visual direction for this event" fill unoptimized={isCustomCover(event.image)} sizes="(min-width: 1024px) 70vw, 100vw" className="object-cover" /><span className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" /><div className="absolute bottom-4 left-5 text-white"><p className="text-[0.625rem] font-semibold uppercase tracking-widest text-white/80">Your event cover</p><p className="mt-1 text-sm font-semibold">Start with a feeling. Build from here.</p></div></div><CollectionPanel event={event} section="moodboard" /></div>;
 }
 
-export function EventWorkspace({ id, initialSection }: { id: string; initialSection?: string }) {
+export function EventWorkspace({ id, initialSection, initialTab, initialAction }: { id: string; initialSection?: string; initialTab?: string; initialAction?: string }) {
   const router = useRouter();
   const events = usePlannerEvents();
   const budgetStore = useBudgetStore();
   const ready = useBrowserReady();
   const event = events.find((item) => item.id === id);
   const [active, setActive] = useState<SectionId>(sections.some((section) => section.id === initialSection) ? initialSection as SectionId : "overview");
+  const [quickAction, setQuickAction] = useState(initialAction);
   const [cancelling, setCancelling] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -163,7 +164,7 @@ export function EventWorkspace({ id, initialSection }: { id: string; initialSect
       <nav aria-label="Event sections" className="min-w-0 lg:sticky lg:top-24 lg:h-fit lg:rounded-xl lg:border lg:border-border-subtle lg:bg-white lg:p-2"><div className="flex gap-1 overflow-x-auto pb-2 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">{sections.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setActive(item.id)} aria-current={active === item.id ? "page" : undefined} className={cn("flex min-h-10 shrink-0 items-center gap-2.5 rounded-lg px-3 text-xs font-medium transition-colors lg:w-full lg:text-left", active === item.id ? "bg-[#eaf3ed] font-semibold text-brand-primary" : "text-text-secondary hover:bg-background-subtle hover:text-text-primary")}><Icon className="size-[17px] shrink-0" weight="bold" aria-hidden="true" />{item.label}</button>; })}</div></nav>
       <div className="min-w-0"><div className="mb-5 flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#eaf3ed] text-brand-primary"><SectionIcon className="size-5" aria-hidden="true" /></span><div><h2 className="text-xl font-semibold tracking-[-0.03em] text-text-primary">{active === "notes" ? "Notes & questionnaires" : section.label}</h2><p className="mt-1 text-xs text-text-secondary">{section.description}</p></div></div>
         {active === "overview" && <><div className="mb-4 flex justify-end"><EventDetailsEditor event={event} /></div><OverviewPanel event={event} onSelect={setActive} /></>}
-        {active === "notes" && <EventNotesQuestionnaires key={event.id} event={event} />}
+        {active === "notes" && <EventNotesQuestionnaires key={event.id} event={event} initialTab={initialTab} initialAction={quickAction} onActionConsumed={() => setQuickAction(undefined)} />}
         {active === "budget" && <BudgetWorkspace fixedEventId={event.id} embedded />}
         {active === "proposal" && <div className="space-y-5"><div className="flex items-center gap-3 rounded-xl border border-[#e1eaf1] bg-[#f0f5fa] p-4 text-xs text-[#55748b]"><CircleDollarSign className="size-5 shrink-0" aria-hidden="true" />Build a working estimate here. Proposal items stay with this event; they are not sent to anyone automatically.</div><CollectionPanel event={event} section="proposal" /></div>}
         {active === "tasks" && <CollectionPanel event={event} section="tasks" />}

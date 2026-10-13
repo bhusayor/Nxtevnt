@@ -35,9 +35,9 @@ function NoteBody({ body }: { body: string }) {
   return <div className="space-y-1.5 text-[0.8125rem] leading-6 text-text-primary">{body.split("\n").map((line, index) => line.startsWith("- ") ? <div key={index} className="flex gap-2"><span aria-hidden="true">•</span><span>{inline(line.slice(2))}</span></div> : line ? <p key={index} className="whitespace-pre-wrap break-words">{inline(line)}</p> : <div key={index} className="h-1" />)}</div>;
 }
 
-export function EventNotesTab({ event }: { event: PlannerEvent }) {
+export function EventNotesTab({ event, initialCompose = false }: { event: PlannerEvent; initialCompose?: boolean }) {
   const notes = getEventNotes(event);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialCompose);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);

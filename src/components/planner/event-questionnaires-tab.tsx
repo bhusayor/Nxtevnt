@@ -20,12 +20,12 @@ function answeredCount(request: SentQuestionnaire) {
   return request.sections.flatMap((section) => section.questions).filter((question) => question.type !== "divider" && answerIsPresent(request.answers[question.id])).length;
 }
 
-export function EventQuestionnairesTab({ event }: { event: PlannerEvent }) {
+export function EventQuestionnairesTab({ event, initialTemplateOpen = false }: { event: PlannerEvent; initialTemplateOpen?: boolean }) {
   const customTemplates = useQuestionnaireTemplates();
   const cancelled = isEventCancelled(event);
   const templates = [...starterTemplates, ...customTemplates];
   const sent = [...(event.questionnaires ?? [])].sort((a, b) => b.sentAt.localeCompare(a.sentAt));
-  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(initialTemplateOpen && !cancelled);
   const [templateId, setTemplateId] = useState("");
   const [builderOpen, setBuilderOpen] = useState(false);
   const [selectedId, setSelectedId] = useState("");

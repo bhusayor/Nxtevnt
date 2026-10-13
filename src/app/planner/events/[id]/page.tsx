@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: "Plan the details of your event in one place.",
 };
 
-export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ section?: string }> }) {
+export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ section?: string; tab?: string; action?: string }> }) {
   const { id } = await params;
-  const { section } = await searchParams;
-  return <EventWorkspace key={`${id}-${section ?? "overview"}`} id={id} initialSection={section} />;
+  const { section, tab, action } = await searchParams;
+  return <EventWorkspace key={`${id}-${section ?? "overview"}-${tab ?? "notes"}-${action ?? ""}`} id={id} initialSection={section} initialTab={tab} initialAction={action} />;
 }
