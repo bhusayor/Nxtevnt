@@ -5,16 +5,16 @@ import Link from "next/link";
 import { ArrowUpRight, CheckCheck, ClipboardCheck, Scale } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
-import { isEventCancelled, usePlannerEvents } from "@/lib/planner-events";
+import { isEventCancelled, isTaskActive, isTaskComplete, usePlannerEvents } from "@/lib/planner-events";
 
 export function AttentionQueue() {
   const events = usePlannerEvents();
   const [tasksOnly, setTasksOnly] = useState(false);
   const activeEvents = events.filter((event) => !isEventCancelled(event));
-  const tasks = activeEvents.flatMap((event) => event.sections.tasks.filter((task) => !task.done).map((task) => ({ id: task.id, title: task.title, context: event.name, href: `/planner/events/${event.id}?section=tasks`, type: "task" as const })));
+  const tasks = activeEvents.flatMap((event) => event.sections.tasks.filter((task) => isTaskActive(task) && !isTaskComplete(task)).map((task) => ({ id: task.id, title: task.title, context: event.name, href: `/planner/events/${event.id}?section=tasks`, type: "task" as const })));
   const decisions = activeEvents.flatMap((event) => event.sections.decisions.filter((decision) => !decision.done).map((decision) => ({ id: decision.id, title: decision.title, context: event.name, href: `/planner/events/${event.id}?section=decisions`, type: "decision" as const })));
   const visible = tasksOnly ? tasks : [...tasks, ...decisions];
-  const hasAnyItems = activeEvents.some((event) => event.sections.tasks.length || event.sections.decisions.length);
+  const hasAnyItems = activeEvents.some((event) => event.sections.tasks.some((task) => isTaskActive(task)) || event.sections.decisions.length);
 
   return <section className="overflow-hidden rounded-xl border border-border-subtle bg-white" aria-labelledby="attention-title">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4"><div className="flex items-center gap-2"><h2 id="attention-title" className="text-base font-semibold tracking-[-0.02em] text-text-primary">Needs your attention</h2>{hasAnyItems && <span className="flex size-5 items-center justify-center rounded-full bg-[#f3eff8] text-[0.625rem] font-semibold text-[#705987]">{visible.length}</span>}</div>{hasAnyItems && <div className="flex items-center rounded-lg bg-background p-1" aria-label="Filter attention items"><Button size="xs" variant={tasksOnly ? "ghost" : "outline"} aria-pressed={!tasksOnly} onClick={() => setTasksOnly(false)}>All</Button><Button size="xs" variant={tasksOnly ? "outline" : "ghost"} aria-pressed={tasksOnly} onClick={() => setTasksOnly(true)}>Tasks</Button></div>}</div>

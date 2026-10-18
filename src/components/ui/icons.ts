@@ -65,6 +65,7 @@ export { InfoIcon as Info } from "@phosphor-icons/react/dist/ssr/Info";
 export { TextItalicIcon as Italic } from "@phosphor-icons/react/dist/ssr/TextItalic";
 export { SquaresFourIcon as LayoutDashboard } from "@phosphor-icons/react/dist/ssr/SquaresFour";
 export { GridFourIcon as LayoutGrid } from "@phosphor-icons/react/dist/ssr/GridFour";
+export { KanbanIcon as Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
 export { LightbulbIcon as Lightbulb } from "@phosphor-icons/react/dist/ssr/Lightbulb";
 export { LinkIcon as Link2 } from "@phosphor-icons/react/dist/ssr/Link";
 export { ListIcon as List } from "@phosphor-icons/react/dist/ssr/List";

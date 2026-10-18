@@ -17,6 +17,7 @@ type SelectProps = {
   id?: string;
   name?: string;
   label?: string;
+  ariaLabel?: string;
   placeholder?: string;
   helperText?: string;
   error?: string;
@@ -36,6 +37,7 @@ export function Select({
   id,
   name,
   label,
+  ariaLabel,
   placeholder = "Select an option",
   helperText,
   error,
@@ -75,6 +77,7 @@ export function Select({
       >
         <SelectPrimitive.Trigger
           id={selectId}
+          aria-label={ariaLabel}
           aria-describedby={messageId}
           aria-invalid={error ? true : undefined}
           className={cn(

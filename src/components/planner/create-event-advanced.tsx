@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { budgetTemplates, estimateBudget, milestoneDueDate, milestoneTemplates } from "@/lib/event-setup-templates";
+import { useMilestoneTemplates } from "@/lib/planner-task-templates";
 import { formatEventDate, formatGroupedDigits, formatNaira, type NewPlannerEvent } from "@/lib/planner-events";
 import { usePlannerTeam } from "@/lib/planner-team";
 import { cn } from "@/lib/utils/cn";
@@ -17,9 +18,9 @@ type Props = { values: NewPlannerEvent; onChange: (field: Field, value: string) 
 type SampleKind = "budget" | "milestone";
 
 const priorities = [
-  { value: "high", label: "High", detail: "Shown first in your event lists.", dot: "bg-[#c98465]" },
-  { value: "standard", label: "Standard", detail: "The everyday default for your events.", dot: "bg-[#779583]" },
-  { value: "low", label: "Low", detail: "Shown after your higher-priority events.", dot: "bg-[#9aa6b6]" },
+  { value: "high", label: "High", detail: "Shown first in your event lists.", dot: "bg-[#c46f65]", selected: "peer-checked:border-[#e8bdb6] peer-checked:bg-[#fcece9] peer-checked:text-[#9b4e47]" },
+  { value: "standard", label: "Standard", detail: "The everyday default for your events.", dot: "bg-[#579573]", selected: "peer-checked:border-[#cce5d4] peer-checked:bg-[#eaf5ed] peer-checked:text-[#3e7354]" },
+  { value: "low", label: "Low", detail: "Shown after your higher-priority events.", dot: "bg-[#6a9bc2]", selected: "peer-checked:border-[#d8e7f2] peer-checked:bg-[#edf5fb] peer-checked:text-[#4d708c]" },
 ] as const;
 
 export function AdvancedSection({ title, description, icon: Icon, action, children }: {
@@ -65,14 +66,17 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
   const [sampleId, setSampleId] = useState("");
   const sampleTrigger = useRef<HTMLButtonElement | null>(null);
   const teamMembers = usePlannerTeam();
+  const allMilestoneTemplates = useMilestoneTemplates();
   const budgetTemplate = budgetTemplates.find((template) => template.id === values.budgetTemplateId);
-  const milestoneTemplate = milestoneTemplates.find((template) => template.id === values.milestoneTemplateId);
+  const milestoneTemplate = allMilestoneTemplates.find((template) => template.id === values.milestoneTemplateId);
+  const templateLeadDays = milestoneTemplate ? Math.max(0, ...milestoneTemplate.milestones.flatMap((milestone) => [milestone.daysBefore, ...milestone.tasks.map((task) => task.daysBefore)]).filter((days): days is number => days !== undefined)) : 0;
+  const templateStartsBeforeToday = Boolean(milestoneTemplate && values.date && milestoneDueDate(values.date, templateLeadDays) < new Date().toLocaleDateString("sv-SE"));
   const guests = Number(values.guestCount) || budgetTemplate?.baselineGuests || 0;
   const total = estimatedBudget ?? (values.budget ? Number(values.budget) : null);
   const target = Number(values.targetBudget || 0);
   const difference = total !== null && target > 0 ? total - target : null;
   const sampleBudget = budgetTemplates.find((template) => template.id === sampleId) ?? budgetTemplates[0];
-  const sampleMilestone = milestoneTemplates.find((template) => template.id === sampleId) ?? milestoneTemplates[0];
+  const sampleMilestone = allMilestoneTemplates.find((template) => template.id === sampleId) ?? milestoneTemplates[0];
   const sampleRows = estimateBudget(sampleBudget, sampleBudget.baselineGuests);
   const sampleTotal = sampleRows.reduce((sum, item) => sum + item.amount, 0);
 
@@ -121,16 +125,17 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
       </div>
     </AdvancedSection>
 
-    <AdvancedSection title="Milestone template" description="Give your plan a head start with tasks timed to the event." icon={ClipboardCheck}
+    <AdvancedSection title="Milestone template" description="Start with grouped tasks timed to your event date." icon={ClipboardCheck}
       action={<SampleButton onClick={(event) => openSamples("milestone", event.currentTarget)} />}>
       <Select label="Planning template" options={[
         { label: "Add tasks myself later", value: "none" },
-        ...milestoneTemplates.map((template) => ({ label: template.name, value: template.id })),
+        ...allMilestoneTemplates.map((template) => ({ label: template.name, value: template.id })),
       ]} value={values.milestoneTemplateId || "none"} onValueChange={(value) => onChange("milestoneTemplateId", value === "none" ? "" : value)} />
       {milestoneTemplate && <div className="flex items-start gap-2.5 rounded-lg bg-[#f7f5fa] px-4 py-3">
         <Check className="mt-0.5 size-4 shrink-0 text-[#756086]" aria-hidden="true" />
-        <p className="text-xs leading-5 text-text-secondary"><span className="font-semibold text-text-primary">{milestoneTemplate.milestones.length} tasks ready to add.</span> Due dates are based on {values.date ? formatEventDate(values.date, { day: "numeric", month: "short", year: "numeric" }) : "your event date"}.</p>
+        <p className="text-xs leading-5 text-text-secondary"><span className="font-semibold text-text-primary">{milestoneTemplate.milestones.length} milestones · {milestoneTemplate.milestones.reduce((count, milestone) => count + milestone.tasks.length, 0)} tasks.</span> Due dates are based on {values.date ? formatEventDate(values.date, { day: "numeric", month: "short", year: "numeric" }) : "your event date"}.</p>
       </div>}
+      {templateStartsBeforeToday && <p className="rounded-lg border border-[#efdcbf] bg-[#fff8ec] px-4 py-3 text-xs leading-5 text-[#815c32]">Some template dates fall before today. You can adjust each milestone and task date after creating the event.</p>}
     </AdvancedSection>
 
     <AdvancedSection title="Team & priority" description="Set the lead and choose where this event sits in your list." icon={UsersRound}>
@@ -145,8 +150,8 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
           {priorities.map((priority) => <label key={priority.value} className="min-w-0 cursor-pointer">
             <input type="radio" name="event-priority" value={priority.value} checked={(values.priority || "standard") === priority.value}
               onChange={() => onChange("priority", priority.value)} className="peer sr-only" />
-            <span className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-white px-2 text-xs font-medium text-text-secondary transition-colors hover:border-border-strong peer-checked:border-brand-primary/55 peer-checked:bg-[#f0f5f1] peer-checked:font-semibold peer-checked:text-brand-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-primary">
-              <span className={cn("size-1.5 shrink-0 rounded-full", priority.dot)} aria-hidden="true" />{priority.label}
+            <span className={cn("flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-white px-2 text-xs font-medium text-text-secondary transition-colors hover:border-border-strong peer-checked:font-semibold peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-primary", priority.selected)}>
+              <span className={cn("size-2 shrink-0 rounded-full", priority.dot)} aria-hidden="true" />{priority.label}
             </span>
           </label>)}
         </div>
@@ -161,13 +166,13 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border-subtle px-5 py-5 sm:px-7">
             <div>
               <Dialog.Title className="text-lg font-semibold tracking-tight">{sampleKind === "budget" ? "Find your starting budget" : "Choose your planning rhythm"}</Dialog.Title>
-              <Dialog.Description className="mt-1 text-xs leading-5 text-text-secondary">{sampleKind === "budget" ? "Explore sample costs before choosing a template." : "Preview the tasks and dates that will shape your plan."}</Dialog.Description>
+              <Dialog.Description className="mt-1 text-xs leading-5 text-text-secondary">{sampleKind === "budget" ? "Explore sample costs before choosing a template." : "Preview the milestones, tasks and dates that will shape your plan."}</Dialog.Description>
             </div>
             <Dialog.Close asChild><button type="button" aria-label="Close samples" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#f5f6f5] text-text-secondary hover:bg-[#eaf0eb] focus-visible:outline-2 focus-visible:outline-brand-primary"><X className="size-4" /></button></Dialog.Close>
           </div>
           <div className="min-h-0 overflow-y-auto p-5 sm:p-7">
             <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Sample templates">
-              {(sampleKind === "budget" ? budgetTemplates : milestoneTemplates).map((template) => (
+              {(sampleKind === "budget" ? budgetTemplates : allMilestoneTemplates).map((template) => (
                 <button key={template.id} type="button" onClick={() => setSampleId(template.id)} aria-pressed={sampleId === template.id}
                   className={cn("min-h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-primary",
                     sampleId === template.id ? "border-brand-primary bg-brand-primary text-white" : "border-border-subtle text-text-secondary hover:bg-background-subtle")}>{template.name}</button>
@@ -185,12 +190,11 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
               </ul>
               <p className="mt-4 text-xs leading-5 text-text-tertiary">These sample estimates are a starting point. Update them as vendor quotes come in.</p>
             </div> : <div className="mt-4">
-              <div className="rounded-xl bg-[#f5f2fa] p-5"><p className="text-sm font-semibold">{sampleMilestone.name}</p><p className="mt-1 text-xs leading-5 text-text-secondary">{sampleMilestone.description}</p><p className="mt-3 text-xs font-semibold text-[#756086]">{sampleMilestone.milestones.length} planning milestones</p></div>
-              <ol className="mt-5">
-                {sampleMilestone.milestones.map((milestone, index) => <li key={milestone.title} className="relative flex gap-3 pb-5 last:pb-0">
-                  {index < sampleMilestone.milestones.length - 1 && <span className="absolute bottom-0 left-3 top-6 w-px bg-border-subtle" aria-hidden="true" />}
-                  <span className="relative flex size-6 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-white text-[0.625rem] font-semibold text-text-tertiary">{index + 1}</span>
-                  <div className="min-w-0 pt-0.5"><p className="text-xs font-medium">{milestone.title}</p><p className="mt-1 text-[0.6875rem] text-text-tertiary">{milestone.daysBefore} days before{values.date ? ` · ${formatEventDate(milestoneDueDate(values.date, milestone.daysBefore), { day: "numeric", month: "short", year: "numeric" })}` : ""}</p></div>
+              <div className="rounded-xl bg-[#f5f2fa] p-5"><p className="text-sm font-semibold">{sampleMilestone.name}</p><p className="mt-1 text-xs leading-5 text-text-secondary">{sampleMilestone.description}</p><p className="mt-3 text-xs font-semibold text-[#756086]">{sampleMilestone.milestones.length} milestones · {sampleMilestone.milestones.reduce((count, milestone) => count + milestone.tasks.length, 0)} tasks</p></div>
+              <ol className="mt-5 space-y-3">
+                {sampleMilestone.milestones.map((milestone, index) => <li key={milestone.title} className="rounded-xl border border-border-subtle bg-white p-4">
+                  <div className="flex items-start gap-3"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#f0edf6] text-[0.625rem] font-semibold text-[#756086]">{index + 1}</span><div className="min-w-0"><p className="text-xs font-semibold text-text-primary">{milestone.title}</p><p className="mt-1 text-[0.6875rem] text-text-tertiary">{milestone.daysBefore === undefined ? "No target date" : `Target: ${milestone.daysBefore} days before${values.date ? ` · ${formatEventDate(milestoneDueDate(values.date, milestone.daysBefore), { day: "numeric", month: "short", year: "numeric" })}` : ""}`}</p></div></div>
+                  <ul className="ml-9 mt-3 space-y-2 border-l border-border-subtle pl-3">{milestone.tasks.map((task) => <li key={task.title} className="text-xs leading-5 text-text-secondary">{task.title}</li>)}</ul>
                 </li>)}
               </ol>
             </div>}

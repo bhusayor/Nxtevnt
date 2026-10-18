@@ -34,20 +34,65 @@ export function estimateBudget(template: BudgetTemplate, guests: number) {
   return template.items.map((item) => ({ ...item, amount: item.base + item.perGuest * guests }));
 }
 
-export const milestoneTemplates = [
-  { id: "full", name: "Full planning journey", description: "From the first brief through event week.", milestones: [
-    { title: "Confirm the brief and priorities", daysBefore: 120 },
-    { title: "Shortlist and confirm the venue", daysBefore: 90 },
-    { title: "Book key vendors", daysBefore: 60 },
-    { title: "Review the budget and guest plan", daysBefore: 30 },
-    { title: "Finalize the run of show", daysBefore: 14 },
-    { title: "Complete the final vendor check-in", daysBefore: 7 },
+export type MilestoneTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  milestones: { title: string; description?: string; daysBefore?: number; tasks: { title: string; daysBefore?: number; detail?: string; priority?: "high" | "medium" | "low"; clientVisible?: boolean }[] }[];
+};
+
+export const guestCommunicationsMilestone: MilestoneTemplate["milestones"][number] = {
+  title: "Guest communications & RSVPs",
+  description: "Keep invitations, guest updates and responses moving together.",
+  daysBefore: 21,
+  tasks: [
+    { title: "Draft invitations and the RSVP plan", daysBefore: 60 },
+    { title: "Share event details with guests", daysBefore: 35 },
+    { title: "Review responses and follow up", daysBefore: 21 },
+  ],
+};
+
+export const milestoneTemplates: MilestoneTemplate[] = [
+  { id: "full", name: "Full planning journey", description: "A thoughtful path from the first conversation to event day.", milestones: [
+    { title: "Discovery & direction", daysBefore: 120, tasks: [
+      { title: "Gather the client brief and priorities", daysBefore: 120 },
+      { title: "Agree on the event vision and scope", daysBefore: 110 },
+    ] },
+    { title: "Venue & key vendors", daysBefore: 90, tasks: [
+      { title: "Shortlist and visit venues", daysBefore: 100 },
+      { title: "Confirm the venue booking", daysBefore: 90 },
+      { title: "Book priority vendors", daysBefore: 75 },
+    ] },
+    { title: "Design & decor", daysBefore: 60, tasks: [
+      { title: "Gather styling inspiration", daysBefore: 75 },
+      { title: "Finalize the colour palette", daysBefore: 65 },
+      { title: "Approve the decor direction", daysBefore: 60 },
+    ] },
+    { title: "Guests & experience", daysBefore: 30, tasks: [
+      { title: "Review the guest count and seating plan", daysBefore: 35 },
+      { title: "Confirm menu and guest experience", daysBefore: 30 },
+    ] },
+    guestCommunicationsMilestone,
+    { title: "Final preparations", daysBefore: 7, tasks: [
+      { title: "Finalize the run of show", daysBefore: 14 },
+      { title: "Check in with every vendor", daysBefore: 7 },
+      { title: "Share the final event timeline", daysBefore: 3 },
+    ] },
   ] },
-  { id: "focused", name: "Focused event plan", description: "A lean checklist for shorter planning windows.", milestones: [
-    { title: "Confirm scope and venue", daysBefore: 45 },
-    { title: "Book vendors and approve costs", daysBefore: 30 },
-    { title: "Lock guest count and logistics", daysBefore: 14 },
-    { title: "Share the final event timeline", daysBefore: 7 },
+  { id: "focused", name: "Focused event plan", description: "A lighter structure for a shorter planning window.", milestones: [
+    { title: "Plan the essentials", daysBefore: 45, tasks: [
+      { title: "Confirm the brief and budget", daysBefore: 45 },
+      { title: "Secure the venue", daysBefore: 40 },
+    ] },
+    { title: "Bring the team together", daysBefore: 25, tasks: [
+      { title: "Book vendors and approve costs", daysBefore: 30 },
+      { title: "Agree on the styling direction", daysBefore: 25 },
+    ] },
+    { ...guestCommunicationsMilestone, tasks: guestCommunicationsMilestone.tasks.map((task, index) => ({ ...task, daysBefore: [40, 30, 21][index] })) },
+    { title: "Ready for the day", daysBefore: 7, tasks: [
+      { title: "Lock guest count and logistics", daysBefore: 14 },
+      { title: "Share the final event timeline", daysBefore: 7 },
+    ] },
   ] },
 ];
 

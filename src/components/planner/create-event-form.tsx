@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
 import { getCreditBalance, refundCreditUse, spendCreditForEvent, useCreditBalance, type CreditUsage } from "@/lib/planner-credits";
 import { importBudgetData, type BudgetGroup, type BudgetItem } from "@/lib/planner-budget";
-import { budgetTemplates, estimateBudget, milestoneDueDate, milestoneTemplates } from "@/lib/event-setup-templates";
+import { budgetTemplates, estimateBudget, milestoneDueDate } from "@/lib/event-setup-templates";
+import { useMilestoneTemplates } from "@/lib/planner-task-templates";
 import { createPlannerEvent, eventCovers, formatEventDate, formatNaira, isCustomCover, useBrowserReady, type NewPlannerEvent } from "@/lib/planner-events";
 
 const eventTypes = [
@@ -44,6 +45,7 @@ export function CreateEventForm() {
   const router = useRouter();
   const ready = useBrowserReady();
   const credits = useCreditBalance();
+  const milestoneTemplates = useMilestoneTemplates();
   const [step, setStep] = useState<1 | 2>(1);
   const [values, setValues] = useState<NewPlannerEvent>(initial);
   const [otherType, setOtherType] = useState("");
@@ -88,6 +90,15 @@ export function CreateEventForm() {
       usage = spendCreditForEvent(eventId, values.name);
       if (!usage) { setSaveError("You need one credit to create an event."); setSaving(false); return; }
       const milestoneTemplate = milestoneTemplates.find((template) => template.id === values.milestoneTemplateId);
+      const taskGroups = milestoneTemplate?.milestones.map((milestone) => ({
+        id: crypto.randomUUID(), title: milestone.title, description: milestone.description,
+        dueDate: milestone.daysBefore === undefined ? undefined : milestoneDueDate(values.date, milestone.daysBefore),
+      })) ?? [];
+      const initialTasks = milestoneTemplate?.milestones.flatMap((milestone, index) => milestone.tasks.map((task) => ({
+        id: crypto.randomUUID(), title: task.title, groupId: taskGroups[index].id,
+        detail: task.detail, dueDate: task.daysBefore === undefined ? undefined : milestoneDueDate(values.date, task.daysBefore),
+        status: "todo" as const, priority: task.priority ?? "medium" as const, clientVisible: task.clientVisible ?? false, done: false,
+      }))) ?? [];
       const created = createPlannerEvent({
         ...values,
         budget: estimatedBudget !== null ? String(estimatedBudget) : values.budget,
@@ -98,7 +109,7 @@ export function CreateEventForm() {
         clientName: values.clientName.trim(),
         description: values.description.trim(),
         assignedTeamMember: values.assignedTeamMember?.trim(),
-      }, eventId, milestoneTemplate?.milestones.map((milestone) => ({ id: crypto.randomUUID(), title: milestone.title, dueDate: milestoneDueDate(values.date, milestone.daysBefore), done: false })) ?? []);
+      }, eventId, initialTasks, taskGroups);
       eventSaved = true;
       if (estimatedRows) {
         const groups: BudgetGroup[] = [...new Set(estimatedRows.map((row) => row.group))].map((name) => ({ id: crypto.randomUUID(), name, eventId, currency: "NGN", createdAt: created.createdAt }));

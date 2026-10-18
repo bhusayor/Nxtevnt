@@ -23,6 +23,29 @@ button, input, textarea, select { font: inherit; }
 
 .otp-digit-filled { animation: otp-pop 220ms var(--ease-emphasized); }
 
+@keyframes metric-card-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes metric-progress-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes event-overview-metric-enter {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .metric-card-enter { animation: metric-card-enter 420ms ease-out backwards; }
+  .metric-card-progress { animation: metric-progress-fill 720ms ease-out both; }
+  .event-overview-metric { animation: event-overview-metric-enter 600ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+  .event-overview-metric:nth-child(2) { animation-delay: 90ms; }
+  .event-overview-metric:nth-child(3) { animation-delay: 180ms; }
+}
+
 @media (pointer: coarse) {
   .button-touch-target { min-width: 44px; min-height: 44px; }
 }

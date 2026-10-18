@@ -1,15 +1,42 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { guestCommunicationsMilestone } from "@/lib/event-setup-templates";
 
 export type EventItem = {
   id: string;
   title: string;
+  groupId?: string;
   detail?: string;
+  status?: TaskStatus | LegacyTaskStatus;
+  priority?: "high" | "medium" | "low";
+  assignee?: string;
+  clientVisible?: boolean;
+  comments?: TaskComment[];
   amount?: number;
   time?: string;
   url?: string;
   done?: boolean;
+  dueDate?: string;
+};
+
+export type TaskStatus = "todo" | "in-progress" | "completed" | "blocked";
+type LegacyTaskStatus = "ongoing" | "review" | "canceled" | "archived";
+export type TaskComment = { id: string; body: string; author: string; createdAt: string };
+
+export function taskStatus(task: EventItem): TaskStatus {
+  if (task.status === "ongoing" || task.status === "review") return "in-progress";
+  if (task.status === "blocked" || task.status === "completed" || task.status === "in-progress" || task.status === "todo") return task.status;
+  return task.done ? "completed" : "todo";
+}
+
+export function isTaskComplete(task: EventItem) { return taskStatus(task) === "completed"; }
+export function isTaskActive(task: EventItem) { return ["todo", "in-progress", "completed", "blocked"].includes(taskStatus(task)); }
+
+export type EventTaskGroup = {
+  id: string;
+  title: string;
+  description?: string;
   dueDate?: string;
 };
 
@@ -70,6 +97,7 @@ export type PlannerEvent = {
   notes: string;
   noteEntries?: EventNote[];
   questionnaires?: SentQuestionnaire[];
+  taskGroups?: EventTaskGroup[];
   sections: EventSections;
 };
 
@@ -84,6 +112,7 @@ export const eventCovers = [
 
 const key = "nxtevnt.planner.events.v1";
 const changed = "nxtevnt:planner-events-changed";
+const guestMilestoneMigrationKey = "nxtevnt.planner.guest-milestone.v1";
 const emptyEvents: readonly PlannerEvent[] = [];
 let cachedRaw: string | null | undefined;
 let cachedEvents: readonly PlannerEvent[] = emptyEvents;
@@ -132,13 +161,43 @@ export function usePlannerEvents() {
   return useSyncExternalStore(subscribe, readEvents, () => emptyEvents);
 }
 
+export function addGuestMilestoneToExistingEvents() {
+  if (typeof window === "undefined") return;
+  try {
+    if (window.localStorage.getItem(guestMilestoneMigrationKey)) return;
+    const events = readEvents();
+    const updated = events.map((event) => {
+      if ((event.taskGroups ?? []).some((group) => group.title.trim().toLocaleLowerCase() === guestCommunicationsMilestone.title.toLocaleLowerCase())) return event;
+      const groupId = crypto.randomUUID();
+      return {
+        ...event,
+        taskGroups: [...(event.taskGroups ?? []), {
+          id: groupId,
+          title: guestCommunicationsMilestone.title,
+          description: guestCommunicationsMilestone.description,
+        }],
+        sections: {
+          ...event.sections,
+          tasks: [...event.sections.tasks, ...guestCommunicationsMilestone.tasks.map((task) => ({
+            id: crypto.randomUUID(), groupId, title: task.title, status: "todo" as const, done: false, priority: "medium" as const,
+          }))],
+        },
+      };
+    });
+    if (events.length) writeEvents(updated);
+    window.localStorage.setItem(guestMilestoneMigrationKey, "done");
+  } catch {
+    // A blocked storage write should not prevent the planner workspace from opening.
+  }
+}
+
 function subscribeNoop() { return () => {}; }
 
 export function useBrowserReady() {
   return useSyncExternalStore(subscribeNoop, () => true, () => false);
 }
 
-export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUID(), initialTasks: EventItem[] = []): PlannerEvent {
+export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUID(), initialTasks: EventItem[] = [], taskGroups: EventTaskGroup[] = []): PlannerEvent {
   const event: PlannerEvent = {
     ...input,
     id,
@@ -146,6 +205,7 @@ export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUI
     notes: "",
     noteEntries: [],
     questionnaires: [],
+    taskGroups,
     sections: { tasks: initialTasks, expenses: [], proposal: [], moodboard: [], agenda: [], decisions: [], files: [] },
   };
   writeEvents([event, ...readEvents()]);

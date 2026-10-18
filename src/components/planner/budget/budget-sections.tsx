@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, ChevronDown, ChevronRight, FileText, MoreHorizontal, Plus, ReceiptText, StickyNote } from "@/components/ui/icons";
+import { CalendarDays, ChevronDown, ChevronRight, CircleDollarSign, FileText, MoreHorizontal, Plus, ReceiptText, StickyNote, Wallet } from "@/components/ui/icons";
 
 import { BudgetGroupIcon } from "@/components/planner/budget/budget-group-icon";
+import { OverviewMetricCard } from "@/components/planner/overview-metric-card";
 import { Button } from "@/components/ui/button";
 import type { PlannerEvent } from "@/lib/planner-events";
 import { budgetStatuses, formatBudgetMoney, installmentPayments, isBooked, itemBalance, vendorStatuses, type BudgetGroup, type BudgetItem, type BudgetStatus, type VendorStatus } from "@/lib/planner-budget";
@@ -36,13 +37,13 @@ export function BudgetSummary({ clientBudget, items, currency }: { clientBudget:
   const paid = items.reduce((sum, item) => sum + item.paid, 0);
   const remaining = clientBudget === null ? null : clientBudget - budgeted;
   const metrics = [
-    { label: "Client budget", value: clientBudget === null ? "Not set" : formatBudgetMoney(clientBudget, currency) },
-    { label: "Budgeted / committed", value: formatBudgetMoney(budgeted, currency) },
-    { label: "Invoiced", value: formatBudgetMoney(invoiced, currency) },
-    { label: "Paid", value: formatBudgetMoney(paid, currency) },
-    { label: "Remaining", value: remaining === null ? "—" : formatBudgetMoney(Math.abs(remaining), currency), tone: remaining === null ? "" : remaining < 0 ? "text-[#a35250]" : "text-brand-primary", detail: remaining !== null && remaining < 0 ? "Over budget" : remaining !== null ? "Under budget" : "Set a client budget" },
+    { label: "Client budget", value: clientBudget === null ? "Not set" : formatBudgetMoney(clientBudget, currency), detail: "Client’s target", icon: Wallet, tone: "neutral" as const },
+    { label: "Budgeted / committed", value: formatBudgetMoney(budgeted, currency), detail: "Planned event costs", icon: CircleDollarSign, tone: "lilac" as const, progress: clientBudget && clientBudget > 0 ? { value: Math.round(budgeted / clientBudget * 100), label: "Budget committed against client target" } : undefined },
+    { label: "Invoiced", value: formatBudgetMoney(invoiced, currency), detail: "Billed by vendors", icon: ReceiptText, tone: "blue" as const },
+    { label: "Paid", value: formatBudgetMoney(paid, currency), detail: "Recorded payments", icon: CircleDollarSign, tone: "amber" as const, progress: invoiced > 0 ? { value: Math.round(paid / invoiced * 100), label: "Payments against invoices" } : undefined },
+    { label: "Remaining", value: remaining === null ? "—" : formatBudgetMoney(Math.abs(remaining), currency), detail: remaining === null ? "Set a client budget" : remaining < 0 ? "Over budget" : remaining === 0 ? "On budget" : "Under budget", icon: Wallet, tone: remaining === null ? "neutral" as const : remaining < 0 ? "rose" as const : "sage" as const },
   ];
-  return <section aria-label="Budget summary" className="grid grid-cols-2 gap-y-4 rounded-xl border border-border-subtle bg-white px-5 py-5 sm:grid-cols-3 sm:px-6 xl:grid-cols-5">{metrics.map((metric, index) => <div key={metric.label} className={cn("min-w-0 pr-4", index > 0 && "sm:border-l sm:border-border-subtle sm:pl-5", index === 3 && "sm:border-l-0 xl:border-l", index === 1 && "border-l border-border-subtle pl-4", index === 4 && "col-span-2 border-t border-border-subtle pt-4 sm:col-span-1 sm:border-t-0 sm:pt-0")}><p className="text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-text-tertiary">{metric.label}</p><p className={cn("mt-2 truncate text-lg font-semibold tracking-[-0.035em] text-text-primary", metric.tone)} title={metric.value}>{metric.value}</p>{metric.detail && <p className={cn("mt-0.5 text-[0.6875rem]", metric.tone || "text-text-tertiary")}>{metric.detail}</p>}</div>)}</section>;
+  return <section aria-label="Budget summary" className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-5">{metrics.map((metric) => <OverviewMetricCard key={metric.label} {...metric} compact />)}</section>;
 }
 
 export function BudgetProgress({ items }: { items: BudgetItem[] }) {

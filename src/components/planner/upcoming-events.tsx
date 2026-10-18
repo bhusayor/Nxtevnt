@@ -8,7 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils/cn";
 import type { DashboardEvent } from "@/components/planner/overview-data";
-import { formatEventDate, getEventNotes, isCustomCover, isEventCancelled, usePlannerEvents, type PlannerEvent } from "@/lib/planner-events";
+import { formatEventDate, getEventNotes, isCustomCover, isEventCancelled, isTaskActive, isTaskComplete, usePlannerEvents, type PlannerEvent } from "@/lib/planner-events";
 
 const tones = {
   sage: { avatar: "bg-success-soft text-success", surface: "bg-[#f1f6f2]", bar: "bg-[#729784]" },
@@ -45,8 +45,8 @@ export function asDashboardEvent(event: PlannerEvent): DashboardEvent {
   const date = new Date(`${event.date}T12:00:00`);
   const today = new Date().toLocaleDateString("sv-SE");
   const daysUntil = Math.round((date.getTime() - new Date(`${today}T12:00:00`).getTime()) / 86_400_000);
-  const tasks = event.sections.tasks ?? [];
-  const completed = tasks.filter((task) => task.done).length;
+  const tasks = (event.sections.tasks ?? []).filter(isTaskActive);
+  const completed = tasks.filter(isTaskComplete).length;
   const client = event.clientName || "Personal event";
   return {
     slug: event.id,
@@ -58,7 +58,7 @@ export function asDashboardEvent(event: PlannerEvent): DashboardEvent {
     location: event.location || "Venue to be confirmed",
     client,
     progress: tasks.length ? Math.round(completed / tasks.length * 100) : 0,
-    next: tasks.find((task) => !task.done)?.title || "Add your first task",
+    next: tasks.find((task) => !isTaskComplete(task))?.title || (tasks.length ? "All tasks complete" : "Add your first task"),
     image: event.image,
     alt: `${event.type} event cover`,
     status: isEventCancelled(event) ? "cancelled" : daysUntil < 0 ? "past" : "upcoming",

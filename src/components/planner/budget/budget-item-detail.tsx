@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { CalendarDays, Download, Eye, FileImage, FileSpreadsheet, FileText, Pencil, StickyNote, X } from "@/components/ui/icons";
+import { CalendarDays, CircleDollarSign, Download, Eye, FileImage, FileSpreadsheet, FileText, Pencil, ReceiptText, StickyNote, Wallet, X } from "@/components/ui/icons";
 
 import { BudgetStatusBadge, VendorStatusBadge } from "@/components/planner/budget/budget-sections";
+import { OverviewMetricCard } from "@/components/planner/overview-metric-card";
 import { Button } from "@/components/ui/button";
 import { getBudgetAttachment } from "@/lib/budget-attachments";
 import { formatEventDate } from "@/lib/planner-events";
@@ -71,10 +72,10 @@ export function BudgetItemDetail({ item, groupName, eventName, open, onOpenChang
   }
 
   const metrics = [
-    { label: "Budgeted", value: item.budgeted, tone: "bg-[#f2f7f3] border-[#dde9df]", hint: "Planned cost" },
-    { label: "Invoiced", value: item.invoiced, tone: "bg-[#f2f5f9] border-[#e0e9f1]", hint: "Billed by vendor" },
-    { label: "Paid", value: item.paid, tone: "bg-[#f6f3fa] border-[#e9e1f0]", hint: "Recorded payments" },
-    { label: "Balance left", value: itemBalance(item), tone: "bg-[#fbf6ed] border-[#efe5d6]", hint: "Still to cover" },
+    { label: "Budgeted", value: item.budgeted, tone: "sage" as const, detail: "Planned cost", icon: Wallet },
+    { label: "Invoiced", value: item.invoiced, tone: "blue" as const, detail: "Billed by vendor", icon: ReceiptText },
+    { label: "Paid", value: item.paid, tone: "lilac" as const, detail: "Recorded payments", icon: CircleDollarSign, progress: item.invoiced > 0 ? { value: Math.round(item.paid / item.invoiced * 100), label: "Paid against invoices" } : undefined },
+    { label: "Balance left", value: itemBalance(item), tone: "amber" as const, detail: "Still to cover", icon: Wallet },
   ];
 
   return <Dialog.Root open={open} onOpenChange={onOpenChange}><Dialog.Portal>
@@ -83,7 +84,7 @@ export function BudgetItemDetail({ item, groupName, eventName, open, onOpenChang
       <header className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-5 sm:px-7"><div className="min-w-0"><p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-text-tertiary">{eventName} <span className="mx-1">/</span> {groupName}</p><Dialog.Title className="mt-1 text-xl font-semibold tracking-tight text-text-primary sm:text-2xl">{item.name}</Dialog.Title><Dialog.Description className="mt-1 text-xs text-text-secondary">Budget item details, payment plan and supporting documents.</Dialog.Description><div className="mt-3 flex flex-wrap gap-2"><VendorStatusBadge status={item.vendorStatus} /><BudgetStatusBadge status={item.status} /></div></div><Dialog.Close asChild><button type="button" aria-label="Close details" className="flex size-9 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-background-subtle"><X className="size-4" /></button></Dialog.Close></header>
 
       <div className="min-h-0 space-y-6 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-        <section aria-label="Financial overview"><div className="flex flex-wrap items-end justify-between gap-2"><div><h3 className="text-sm font-semibold text-text-primary">Financial overview</h3><p className="mt-1 text-xs text-text-secondary">All amounts in {item.currency}. Figures are recorded here; no payment is processed.</p></div></div><div className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-4">{metrics.map((metric) => <div key={metric.label} className={`min-w-0 rounded-xl border p-4 ${metric.tone}`}><p className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-text-secondary">{metric.label}</p><p className="mt-2 break-words text-base font-semibold tracking-tight tabular-nums text-text-primary sm:text-lg" title={formatBudgetMoney(metric.value, item.currency)}>{formatBudgetMoney(metric.value, item.currency)}</p><p className="mt-1 text-[0.6875rem] text-text-tertiary">{metric.hint}</p></div>)}</div><p className="mt-2 text-[0.6875rem] leading-5 text-text-tertiary">Balance left uses the higher of budgeted or invoiced, minus paid. It is a planning balance, not an automatic charge.</p></section>
+        <section aria-label="Financial overview"><div className="flex flex-wrap items-end justify-between gap-2"><div><h3 className="text-sm font-semibold text-text-primary">Financial overview</h3><p className="mt-1 text-xs text-text-secondary">All amounts in {item.currency}. Figures are recorded here; no payment is processed.</p></div></div><div className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-4">{metrics.map((metric) => <OverviewMetricCard key={metric.label} {...metric} value={formatBudgetMoney(metric.value, item.currency)} compact />)}</div><p className="mt-2 text-[0.6875rem] leading-5 text-text-tertiary">Balance left uses the higher of budgeted or invoiced, minus paid. It is a planning balance, not an automatic charge.</p></section>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <div className="space-y-5">

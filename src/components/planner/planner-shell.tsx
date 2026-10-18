@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,6 +24,7 @@ import {
 import { BrandMark } from "@/components/nextevnt/brand-logo";
 import { WorkspaceSwitcher, type WorkspaceRole } from "@/components/planner/workspace-switcher";
 import { useCreditBalance } from "@/lib/planner-credits";
+import { addGuestMilestoneToExistingEvents } from "@/lib/planner-events";
 import { cn } from "@/lib/utils/cn";
 
 const navGroups = [
@@ -64,6 +65,10 @@ export function PlannerShell({ children, role = "planner" }: { children: ReactNo
   const home = role === "planner" ? "/planner" : `/${role}`;
   const roleLabel = role[0].toUpperCase() + role.slice(1);
   const sectionLabel = pathname === home ? "Overview" : pathname.startsWith("/planner/events/") ? "Event workspace" : pathname.split("/").at(-1)!.replaceAll("-", " ");
+
+  useEffect(() => {
+    if (role === "planner") addGuestMilestoneToExistingEvents();
+  }, [role]);
 
   return (
     <div className="min-h-screen bg-background">
