@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent } from "react";
+import { ConfirmDeleteButton } from "@/components/ui/delete-confirmation";
 import type { QuestionnaireQuestion } from "@/lib/planner-events";
 
 const fieldClass = "block w-full rounded-lg border border-border-default bg-white px-3.5 py-3 text-xs leading-5 outline-none transition-colors placeholder:text-text-tertiary focus:border-brand-primary disabled:bg-background-subtle";
@@ -50,7 +51,7 @@ export function QuestionAnswerField({ question, value, onChange, disabled }: { q
         onChange(JSON.stringify({ name: file.name, data })); setFileError("");
       } catch { setFileError("This file couldn’t be added."); }
     }
-    return <div className="space-y-2">{current ? <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-[#f7faf8] px-3 py-2.5 text-xs"><span className="min-w-0 flex-1 truncate font-medium">{current.name}</span><a href={current.data} download={current.name} className="font-semibold text-brand-primary hover:underline">Download</a>{!disabled && <button type="button" onClick={() => onChange("")} className="font-semibold text-error">Remove</button>}</div> : null}{!disabled && <label className="block cursor-pointer rounded-lg border border-dashed border-border-strong px-4 py-4 text-center text-xs text-text-secondary hover:border-brand-primary">{type === "photo" ? "Add a photo" : "Add a file"} <span className="block text-[0.625rem] text-text-tertiary">Up to 400 KB in this local preview</span><input type="file" accept={type === "photo" ? "image/*" : undefined} onChange={upload} className="sr-only" /></label>}{fileError && <p role="alert" className="text-xs text-error">{fileError}</p>}</div>;
+    return <div className="space-y-2">{current ? <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-[#f7faf8] px-3 py-2.5 text-xs"><span className="min-w-0 flex-1 truncate font-medium">{current.name}</span><a href={current.data} download={current.name} className="font-semibold text-brand-primary hover:underline">Download</a>{!disabled && <ConfirmDeleteButton confirmationTitle="Delete attachment?" description={`“${current?.name || "This file"}” will be removed from your answer. This can’t be undone.`} onConfirm={() => onChange("")} className="font-semibold text-error">Remove</ConfirmDeleteButton>}</div> : null}{!disabled && <label className="block cursor-pointer rounded-lg border border-dashed border-border-strong px-4 py-4 text-center text-xs text-text-secondary hover:border-brand-primary">{type === "photo" ? "Add a photo" : "Add a file"} <span className="block text-[0.625rem] text-text-tertiary">Up to 400 KB in this local preview</span><input type="file" accept={type === "photo" ? "image/*" : undefined} onChange={upload} className="sr-only" /></label>}{fileError && <p role="alert" className="text-xs text-error">{fileError}</p>}</div>;
   }
   const inputType = type === "email" ? "email" : type === "phone" ? "tel" : type === "number" ? "number" : type === "date" ? "date" : type === "time" ? "time" : type === "datetime" ? "datetime-local" : "text";
   return <input id={id} type={inputType} value={value} onChange={(change) => onChange(change.target.value)} disabled={disabled} placeholder="Your answer" className={fieldClass} />;

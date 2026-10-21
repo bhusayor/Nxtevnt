@@ -1,8 +1,9 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode, TableHTMLAttributes, ThHTMLAttributes, TdHTMLAttributes } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal } from "@/components/ui/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "@/components/ui/icons";
 
+import { ActionMenu, actionMenuItemClassName } from "@/components/ui/action-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils/cn";
 
@@ -56,18 +57,11 @@ export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCel
 }
 
 export function TableActions({ children, label = "Row actions" }: { children: ReactNode; label?: string }) {
-  return (
-    <details className="group relative ml-auto w-fit">
-      <summary aria-label={label} className="flex size-8 cursor-pointer list-none items-center justify-center rounded-[var(--radius-md)] text-text-tertiary hover:bg-background-subtle hover:text-text-primary [&::-webkit-details-marker]:hidden">
-        <MoreHorizontal aria-hidden="true" className="size-4" />
-      </summary>
-      <div className="absolute top-full right-0 z-20 mt-1 grid min-w-40 rounded-[var(--radius-md)] border border-border-default bg-surface p-1 shadow-[var(--shadow-md)]">{children}</div>
-    </details>
-  );
+  return <div className="ml-auto w-fit"><ActionMenu label={label}>{children}</ActionMenu></div>;
 }
 
 export function TableActionItem({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button type="button" className={cn("rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-medium text-text-secondary hover:bg-surface-selected hover:text-text-primary", className)} {...props} />;
+  return <button type="button" role="menuitem" className={cn(actionMenuItemClassName, className)} {...props} />;
 }
 
 type TablePaginationProps = {

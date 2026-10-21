@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -8,12 +7,13 @@ import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthFormHeader } from "@/components/auth/auth-form-header";
 import { PasswordField } from "@/components/auth/password-field";
 import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
+import { NotificationConsentDetails } from "@/components/auth/notification-consent-details";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { passwordRequirements } from "@/lib/validation/password";
 
-type SignupErrors = Partial<Record<"name" | "email" | "password" | "terms", string>>;
+type SignupErrors = Partial<Record<"name" | "email" | "password" | "terms" | "notifications", string>>;
 
 function validateEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -25,9 +25,10 @@ export function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [notificationsAccepted, setNotificationsAccepted] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const submitDisabled = submitting || !name.trim() || !email.trim() || !password || !termsAccepted;
+  const submitDisabled = submitting || !name.trim() || !email.trim() || !password || !termsAccepted || !notificationsAccepted;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,6 +40,7 @@ export function SignupForm() {
       nextErrors.password = "Your password does not yet meet every requirement";
     }
     if (!termsAccepted) nextErrors.terms = "Accept the Terms & Policies to continue";
+    if (!notificationsAccepted) nextErrors.notifications = "Agree to notifications and messages to continue";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
@@ -49,10 +51,10 @@ export function SignupForm() {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5 md:space-y-3">
       <AuthFormHeader title="Create your account" description="Start planning and managing events in one place." />
 
-      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+      <form className="space-y-4 md:space-y-3" noValidate onSubmit={handleSubmit}>
         <Input
           id="full-name"
           label="Full name"
@@ -95,7 +97,7 @@ export function SignupForm() {
           disabled={submitting}
         />
 
-        <fieldset className="border-0 p-0">
+        <fieldset className="space-y-2 border-0 p-0">
           <legend className="sr-only">Required agreements</legend>
           <Checkbox
             id="terms-consent"
@@ -122,6 +124,26 @@ export function SignupForm() {
               </span>
             }
           />
+          <div className="space-y-0.5">
+          <Checkbox
+            id="notifications-consent"
+            name="notificationsConsent"
+            required
+            disabled={submitting}
+            checked={notificationsAccepted}
+            error={errors.notifications}
+            onCheckedChange={(checked) => {
+              setNotificationsAccepted(checked === true);
+              if (errors.notifications) setErrors((current) => ({ ...current, notifications: undefined }));
+            }}
+            label={
+              <span className="font-normal leading-5 text-text-secondary">
+                I agree to email and text notifications from NXTEVNT for account alerts, event updates and verification codes.
+              </span>
+            }
+          />
+          <div className="pl-8"><NotificationConsentDetails /></div>
+          </div>
         </fieldset>
 
         <Button type="submit" size="md" fullWidth className="h-11" loading={submitting} disabled={submitDisabled}>
@@ -132,12 +154,6 @@ export function SignupForm() {
       <AuthDivider />
       <SocialAuthButtons mode="signup" disabled={submitting} />
 
-      <p className="type-body-small text-center text-text-secondary">
-        Already have an account?{" "}
-        <Link href="/login" className="font-semibold text-brand-primary hover:underline hover:underline-offset-4">
-          Sign in
-        </Link>
-      </p>
     </div>
   );
 }

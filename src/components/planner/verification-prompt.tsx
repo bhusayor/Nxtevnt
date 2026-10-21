@@ -6,6 +6,7 @@ import { ArrowRight, BadgeCheck, ShieldCheck } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { usePlannerVerified } from "@/lib/planner-business";
 
 const verificationStorageKey = "nxtevnt-planner-verification-started";
 const verificationEvent = "nxtevnt-verification-change";
@@ -26,6 +27,7 @@ function getVerificationSnapshot() {
 export function VerificationPrompt() {
   const router = useRouter();
   const started = useSyncExternalStore(subscribeToVerification, getVerificationSnapshot, () => false);
+  const verified = usePlannerVerified();
 
   function openVerification() {
     window.localStorage.setItem(verificationStorageKey, "true");
@@ -33,6 +35,7 @@ export function VerificationPrompt() {
     router.push("/planner/verification");
   }
 
+  if (verified) return null;
   return (
     <section className="rounded-xl border border-[#dce7f4] bg-[#edf4fc] px-4 py-4 sm:px-5" aria-labelledby="verification-title">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ActionMenu } from "@/components/ui/action-menu";
+
+import { useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, ClipboardCheck, Plus, Save, X } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
@@ -12,8 +14,6 @@ import { cn } from "@/lib/utils/cn";
 
 export function TaskTemplateControls({ event, onError }: { event: PlannerEvent; onError: (message: string) => void }) {
   const templates = useMilestoneTemplates();
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [dialog, setDialog] = useState<"load" | "save" | null>(null);
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? "");
   const [templateName, setTemplateName] = useState("");
@@ -21,19 +21,10 @@ export function TaskTemplateControls({ event, onError }: { event: PlannerEvent; 
   const [success, setSuccess] = useState("");
   const selected = templates.find((template) => template.id === selectedId) ?? templates[0];
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    function closeOnOutside(event: PointerEvent) {
-      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) setMenuOpen(false);
-    }
-    function closeOnEscape(event: KeyboardEvent) { if (event.key === "Escape") setMenuOpen(false); }
-    document.addEventListener("pointerdown", closeOnOutside);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => { document.removeEventListener("pointerdown", closeOnOutside); document.removeEventListener("keydown", closeOnEscape); };
-  }, [menuOpen]);
+
 
   function openDialog(kind: "load" | "save") {
-    setMenuOpen(false); setError(""); setSuccess(""); setDialog(kind);
+    setError(""); setSuccess(""); setDialog(kind);
     if (kind === "save") setTemplateName("");
   }
 
@@ -67,10 +58,10 @@ export function TaskTemplateControls({ event, onError }: { event: PlannerEvent; 
   }
 
   return <>
-    <div className="relative" ref={menuRef}>
-      <button type="button" aria-expanded={menuOpen} aria-haspopup="menu" onClick={() => setMenuOpen((current) => !current)} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border-default bg-white px-3 text-xs font-semibold text-text-primary transition-colors hover:border-brand-primary/40 hover:bg-[#f7faf7] focus-visible:outline-2 focus-visible:outline-brand-primary"><ClipboardCheck className="size-4 text-brand-primary" aria-hidden="true" />Templates<ChevronDown className={cn("size-3.5 text-text-tertiary transition-transform", menuOpen && "rotate-180")} aria-hidden="true" /></button>
-      {menuOpen && <div role="menu" aria-label="Task templates" className="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-border-subtle bg-white p-1.5 shadow-[var(--shadow-lg)]"><button type="button" role="menuitem" onClick={() => openDialog("load")} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs hover:bg-[#f2f7f3]"><Plus className="size-4 text-brand-primary" aria-hidden="true" /><span><span className="block font-semibold text-text-primary">Load a template</span><span className="mt-0.5 block text-text-tertiary">Add milestones to this event</span></span></button><button type="button" role="menuitem" onClick={() => openDialog("save")} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs hover:bg-[#f2f7f3]"><Save className="size-4 text-brand-primary" aria-hidden="true" /><span><span className="block font-semibold text-text-primary">Save current plan</span><span className="mt-0.5 block text-text-tertiary">Reuse it for future events</span></span></button></div>}
-    </div>
+    <ActionMenu label="Task templates" triggerClassName="w-auto gap-2 border border-border-default bg-white px-3 text-xs font-semibold" triggerContent={<><ClipboardCheck className="size-4 text-brand-primary" aria-hidden="true" />Templates<ChevronDown className="size-3.5 text-text-tertiary" aria-hidden="true" /></>} items={[
+      { label: "Load a template", description: "Add milestones to this event", icon: <Plus />, onSelect: () => openDialog("load") },
+      { label: "Save current plan", description: "Reuse it for future events", icon: <Save />, onSelect: () => openDialog("save") },
+    ]} />
     {success && <p role="status" className="w-full text-xs font-medium text-brand-primary">{success}</p>}
 
     <Dialog.Root open={dialog === "load"} onOpenChange={(open) => { if (!open) setDialog(null); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-[#10231a]/50 backdrop-blur-[2px]" /><Dialog.Content className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-lg)] focus:outline-none sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(38rem,calc(100vw-2rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"><div className="flex items-start justify-between gap-3 border-b border-border-subtle px-5 py-5 sm:px-6"><div><Dialog.Title className="text-lg font-semibold">Load a task template</Dialog.Title><Dialog.Description className="mt-1 text-xs leading-5 text-text-secondary">Choose a ready-made plan or one you saved. It adds new milestones without replacing your current tasks.</Dialog.Description></div><Dialog.Close asChild><button type="button" aria-label="Close" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border-subtle"><X className="size-4" aria-hidden="true" /></button></Dialog.Close></div><div className="min-h-0 space-y-2 overflow-y-auto p-5 sm:p-6">{templates.map((template) => {

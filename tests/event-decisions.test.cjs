@@ -1,0 +1,219 @@
+// Run with: node tests/event-decisions.test.cjs
+// Memory-only fixtures: no browser storage, real client accounts or user records are touched.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const root = path.resolve(__dirname, '..');
+const ts = require(path.join(root, 'node_modules/typescript'));
+const React = require(path.join(root, 'node_modules/react'));
+let currentEvent, failSave = false, writes = 0;
+const uploads = new Map();
+const originalLoad = Module._load;
+Module._load = function(id, parent, main) {
+  if (id === '@/components/ui/icons') return new Proxy({}, { get: () => () => null });
+  if (id === '@/lib/planner-team') return { usePlannerTeam: () => [{ name: 'Test Planner', isOwner: true }] };
+  if (id === '@/lib/planner-events') return {
+    usePlannerEvents: () => [currentEvent], useBrowserReady: () => true,
+    updatePlannerEvent(id, change) { if (currentEvent?.id === id) { if (failSave) throw Error('Storage is full'); currentEvent = change(currentEvent); writes++; } },
+  };
+  if (id === '@/lib/event-images') return { prepareEventImage: async () => 'data:image/jpeg;base64,test' };
+  if (id === '@/lib/moodboard-images') return {
+    storeMoodboardImage: async (id, data) => { uploads.set(id, data); return 'nxtevnt-moodboard:' + id; },
+    deleteMoodboardImage: async (ref) => { uploads.delete(ref?.replace('nxtevnt-moodboard:', '')); },
+    useMoodboardImage: () => ({ src: '/photo.jpg' }),
+  };
+  if (id.startsWith('@/')) id = path.join(root, 'src', id.slice(2));
+  return originalLoad.call(this, id, parent, main);
+};
+for (const ext of ['.ts', '.tsx']) Module._extensions[ext] = (mod, file) => mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: 1, target: 9, jsx: 4, esModuleInterop: true } }).outputText, file);
+const { changeEventDecision, currentEventDecisions, decisionAttachment, respondToEventDecision, localDecisionDate } = require('../src/lib/event-decisions.ts');
+const fixture = {
+  id: 'test-event', name: 'A celebration', clientName: 'Adaeze',
+  sections: { tasks: [{ id: 'keep-task' }], expenses: [], proposal: [], agenda: [], files: [],
+    moodboard: [{ id: 'photo', title: 'Original setting', image: 'nxtevnt-moodboard:original-image', designApproval: { decisionId: 'old', revision: 'v1' } }],
+    decisions: [{ id: 'old', title: 'Original setting', image: 'nxtevnt-moodboard:original-image', sourceMoodboardImageId: 'photo', sourceMoodboardBoardId: 'board', decisionCategory: 'Design', done: true,
+      designApproval: { decisionId: 'old', revision: 'v1', mode: 'on-behalf', state: 'approved-on-behalf', method: 'email', by: 'Test Planner', at: '2026-10-20T10:00:00Z', evidence: 'nxtevnt-moodboard:original-evidence' } }],
+  },
+};
+const input = { id: 'new', title: 'New lighting choice', category: 'Design', decidedBy: 'on-behalf', method: 'whatsapp', decidedOn: '2026-10-21', note: 'Client prefers warmer lighting', expectedRevision: 'v1' };
+const at = '2026-10-21T12:00:00Z';
+const original = JSON.stringify(fixture);
+const changed = changeEventDecision(fixture, 'old', input, 'Test Planner', at);
+assert.equal(JSON.stringify(fixture), original);
+assert.equal(changed.sections.decisions.length, 2);
+assert.equal(changed.sections.decisions[0], fixture.sections.decisions[0], 'Original decision is untouched, including image, evidence and confirmation');
+assert.equal(changed.sections.decisions[1].supersedesDecisionId, 'old');
+assert.equal(changed.sections.decisions[1].decisionRecord.note, input.note);
+assert.equal(changed.sections.decisions[1].decisionRecord.method, 'whatsapp');
+assert.equal(changed.sections.decisions[1].decisionRecord.decidedOn, '2026-10-21');
+assert.equal(changed.sections.tasks, fixture.sections.tasks);
+assert.equal(changed.sections.moodboard[0].designApproval.decisionId, 'new');
+assert.deepEqual(currentEventDecisions(changed).map(d => d.id), ['new']);
+assert.throws(() => changeEventDecision(changed, 'old', { ...input, id: 'duplicate' }, 'Planner', at), /already changed/);
+assert.throws(() => changeEventDecision(fixture, 'old', { ...input, expectedRevision: 'stale' }, 'Planner', at), /while you were editing/);
+for (const invalid of [{ title: '' }, { title: 'a'.repeat(241) }, { category: 'bad' }, { method: 'bad' }, { decidedBy: 'bad' }, { decidedBy: 'someone-else', name: '' }, { decidedOn: '2026-02-30' }, { decidedOn: '2026-10-22' }, { note: 'a'.repeat(281) }, { image: 'data:image/png;base64,bad' }]) assert.throws(() => changeEventDecision(fixture, 'old', { ...input, ...invalid }, 'Planner', at));
+assert.throws(() => changeEventDecision({ ...fixture, cancelledAt: at }, 'old', input, 'Planner', at), /Reopen/);
+assert.throws(() => changeEventDecision(fixture, 'old', { ...input, method: 'in-app' }, 'Planner', at), /outside the app/);
+const request = changeEventDecision(fixture, 'old', { ...input, decidedBy: 'client', method: 'in-app' }, 'Planner', at);
+assert.equal(request.sections.decisions[1].done, false, 'Planner cannot impersonate a client confirmation');
+assert.equal(request.sections.decisions[1].designApproval.state, 'awaiting-confirmation');
+assert.throws(() => respondToEventDecision(request, 'old', 'v1', 'confirm', 'Adaeze', at), /latest decision/);
+const reminded = respondToEventDecision(request, 'new', 'new', 'remind', 'Planner', at);
+assert.equal(reminded.sections.decisions[1].designApproval.reminderCount, 1);
+assert.throws(() => respondToEventDecision(reminded, 'new', 'new', 'remind', 'Planner', at), /wait a minute/);
+const confirmed = respondToEventDecision(reminded, 'new', 'new', 'confirm', 'Adaeze', at);
+assert.equal(confirmed.sections.decisions[1].designApproval.state, 'approved-by-client');
+assert.equal(confirmed.sections.decisions[1].done, true);
+assert.equal(confirmed.sections.decisions[0], fixture.sections.decisions[0]);
+assert.throws(() => changeEventDecision(confirmed, 'new', { ...input, id: 'third', expectedRevision: 'new' }, 'Planner', at), /while you were editing/);
+const third = changeEventDecision(changed, 'new', { ...input, id: 'third', expectedRevision: 'new', decidedBy: 'someone-else', name: 'Event host', method: 'call', image: 'nxtevnt-moodboard:new-image' }, 'Planner', at);
+assert.equal(third.sections.decisions.length, 3);
+assert.equal(third.sections.decisions[2].supersedesDecisionId, 'new');
+assert.deepEqual(currentEventDecisions(third).map(d => d.id), ['third']);
+assert.equal(third.sections.decisions[2].designApproval.mode, 'recorded');
+const generic = { ...fixture, sections: { ...fixture.sections, decisions: [{ id: 'manual', title: 'Menu choice', detail: 'Keep this context' }] } };
+assert.equal(changeEventDecision(generic, 'manual', { ...input, expectedRevision: undefined }, 'Planner', at).sections.decisions[0].detail, 'Keep this context');
+const { approveMoodboardImage, removeMoodboardItem, deleteMoodboard } = require('../src/lib/planner-moodboards.ts');
+const unapproved = { ...fixture, createdAt: at, sections: { ...fixture.sections, decisions: [], moodboard: [{ id: 'photo', title: 'Original setting', image: '/photo.jpg' }] } };
+const firstApproval = approveMoodboardImage(unapproved, 'legacy-moodboard', 'photo', 'on-behalf', { id: 'initial-approval', kind: 'updated', author: 'Planner', createdAt: at, body: 'Approved' }, { method: 'call' });
+assert.equal(firstApproval.sections.decisions[0].designApproval.state, 'approved-on-behalf');
+assert.throws(() => approveMoodboardImage(firstApproval, 'legacy-moodboard', 'photo', 'client', { id: 'second', author: 'Planner', createdAt: at }, { expectedRevision: 'initial-approval' }), /Change decision/, 'Original approval cannot overwrite a saved decision');
+const legacyApproval = structuredClone(firstApproval);
+delete legacyApproval.sections.decisions[0].image;
+delete legacyApproval.sections.decisions[0].designApproval.method;
+assert.equal(decisionAttachment(legacyApproval, legacyApproval.sections.decisions[0]), '/photo.jpg');
+const legacyDeleted = removeMoodboardItem(legacyApproval, 'legacy-moodboard', 'photo', { id: 'remove', author: 'Planner', createdAt: at, body: 'Removed', kind: 'updated' });
+assert.equal(legacyDeleted.sections.decisions[0].image, '/photo.jpg', 'Deleting a legacy source retains the original decision image');
+assert.equal(deleteMoodboard(legacyApproval, 'legacy-moodboard').sections.decisions[0].image, '/photo.jpg');
+assert.equal(legacyApproval.sections.decisions[0].image, undefined, 'Compatibility snapshots never mutate the input');
+assert.equal(decisionAttachment(changed, changed.sections.decisions[1]), undefined, 'An intentionally removed new attachment stays removed');
+
+let states = [], cursor = 0;
+React.useState = initial => { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], next => { states[index] = typeof next === 'function' ? next(states[index]) : next; }]; };
+React.useRef = initial => { const index = cursor++; if (!(index in states)) states[index] = { current: initial }; return states[index]; };
+React.useEffect = () => {};
+const walk = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(walk)];
+const text = node => (node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : [node.props?.children].flat(Infinity).map(text).join(' ')).replace(/\s+/g, ' ').trim();
+const { ChangeDecisionDialog } = require('../src/components/planner/change-decision-dialog.tsx');
+const { EventDecisionDetails, EventDecisionsList, DecisionRow } = require('../src/components/planner/event-decision-details.tsx');
+const { ClientDesignDecisions } = require('../src/components/planner/client-design-decisions.tsx');
+const { MoodboardApprovalDialog } = require('../src/components/planner/moodboard-approval-dialog.tsx');
+const { MoodboardPhotoPanel } = require('../src/components/planner/moodboard-photo-panel.tsx');
+const { InspirationDetailsDialog } = require('../src/components/planner/inspiration-details-dialog.tsx');
+const { MoodboardWorkspace } = require('../src/components/planner/moodboard-workspace.tsx');
+const { MoodboardBoardCard } = require('../src/components/planner/moodboard-board-card.tsx');
+const { MoodboardBoardDetail } = require('../src/components/planner/moodboard-board-detail.tsx');
+const { DeleteConfirmation } = require('../src/components/ui/delete-confirmation.tsx');
+const tick = () => new Promise(resolve => setImmediate(resolve));
+async function ui() {
+  currentEvent = structuredClone(fixture);
+  let savedId, cancelled = false;
+  const draw = () => { cursor = 0; return walk(ChangeDecisionDialog({ event: currentEvent, decision: currentEvent.sections.decisions[0], onClose: () => { cancelled = true; }, onSaved: id => { savedId = id; } })); };
+  for (const category of ['Budget', 'Design', 'Vendors', 'Guests', 'Venue & dates', 'Programme']) assert(draw().some(n => n.type === 'button' && text(n) === category));
+  for (const channel of ['In the app', 'WhatsApp', 'Call', 'In person', 'Email']) assert(draw().some(n => n.type === 'button' && text(n) === channel));
+  assert(draw().some(n => n.props.label === 'Decided on' && n.props.value === localDecisionDate()));
+  assert(draw().some(n => n.props.label === 'Note' && n.props.maxLength === 280));
+  assert(draw().some(n => text(n) === 'Save the new decision'));
+  draw().find(n => text(n) === 'Cancel' && n.props.onClick).props.onClick();
+  assert(cancelled); assert.equal(writes, 0);
+  draw().find(n => n.props.label === 'What was decided').props.onChange({ target: { value: 'Warmer lighting' } });
+  draw().find(n => n.type === 'button' && text(n) === 'Someone else').props.onClick();
+  assert(draw().some(n => n.props.label === 'Decision maker’s name' && n.props.required));
+  const scrollArea = draw().find(n => n.props['aria-label'] === 'Decision form fields');
+  assert.equal(scrollArea.type, 'div', 'Scroll is handled by a flex-safe container, not a fieldset');
+  assert(scrollArea.props.className.includes('overflow-y-auto'));
+  assert(walk(scrollArea).some(n => n.props.label === 'Note'), 'Name expansion does not remove the Note field');
+  assert(!walk(scrollArea).some(n => n.type === 'footer'), 'Save and cancel remain outside the scrolling content');
+  const noteNode = draw().find(n => n.props.label === 'Note');
+  let noteFocused = false, noteScrolled = false;
+  noteNode.props.ref.current = { focus(options) { noteFocused = options.preventScroll; }, scrollIntoView(options) { noteScrolled = options.block === 'nearest'; } };
+  draw().find(n => n.type === 'button' && text(n) === 'Add a note').props.onClick();
+  assert(noteFocused && noteScrolled, 'Add a note shortcut focuses and scrolls to the note without moving focus to another field');
+  draw().find(n => n.props.label === 'Decision maker’s name').props.onChange({ target: { value: 'Event host' } });
+  draw().find(n => n.props['aria-label'] === 'Remove decision attachment').props.onClick();
+  draw().find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [{ name: 'new.png' }], value: '' } });
+  assert.equal(uploads.size, 0, 'Selecting an attachment does not persist it');
+  draw().find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
+  await tick();
+  assert(savedId); assert.equal(currentEvent.sections.decisions.length, 2);
+  assert.equal(currentEvent.sections.decisions[1].decisionRecord.name, 'Event host');
+  assert.equal(currentEvent.sections.decisions[0].image, 'nxtevnt-moodboard:original-image');
+  assert.equal(currentEvent.sections.decisions[0].designApproval.evidence, 'nxtevnt-moodboard:original-evidence');
+  assert.equal(uploads.size, 1);
+  states = []; cursor = 0;
+  const list = walk(EventDecisionsList({ event: currentEvent }));
+  assert.equal(list.filter(n => n.type === DecisionRow).length, 1, 'Only the latest version appears in the main list');
+  states = []; cursor = 0;
+  const details = () => { cursor = 0; return walk(EventDecisionDetails({ event: currentEvent, decisionId: savedId, onClose() {} })); };
+  assert(text(details()[0]).includes('Decision history'));
+  assert(details().some(n => text(n) === 'Change decision' && n.props.onClick));
+  details().find(n => n.type === 'button' && text(n).includes('Original setting')).props.onClick();
+  assert(text(details()[0]).includes('Earlier decision'));
+  assert(!details().some(n => text(n) === 'Change decision' && n.props.onClick), 'An older version is read-only');
+  states = []; cursor = 0;
+  currentEvent = structuredClone(fixture); failSave = true; savedId = null;
+  draw().find(n => n.props['aria-label'] === 'Remove decision attachment').props.onClick();
+  draw().find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [{ name: 'failed.png' }], value: '' } });
+  const previousUploads = uploads.size;
+  draw().find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick();
+  assert.equal(uploads.size, previousUploads, 'Failed save cleans up only the new upload');
+  assert.equal(savedId, null); assert.equal(currentEvent.sections.decisions.length, 1);
+  assert(draw().some(n => n.props.role === 'alert'));
+  failSave = false; states = []; cursor = 0;
+  currentEvent = structuredClone(request);
+  const clientDraw = () => { cursor = 0; return walk(ClientDesignDecisions()); };
+  assert(!text(clientDraw()[0]).includes('Original setting'), 'Client only sees the latest request');
+  clientDraw().find(n => n.type === 'button' && text(n).includes('Review & confirm')).props.onClick();
+  clientDraw().find(n => text(n) === 'Confirm this decision' && n.props.onClick).props.onClick();
+  assert.equal(currentEvent.sections.decisions[1].designApproval.state, 'approved-by-client');
+  assert.deepEqual(currentEvent.sections.decisions[0], fixture.sections.decisions[0], 'Confirming latest does not touch original');
+  states = []; cursor = 0;
+  const currentPhoto = currentEvent.sections.moodboard[0];
+  const approvedView = MoodboardApprovalDialog({ event: currentEvent, photo: currentPhoto, onClose() {}, onApprove() {} });
+  assert.equal(approvedView.type, EventDecisionDetails, 'Reopening approved image uses shared details with Change decision');
+  assert.equal(approvedView.props.decisionId, 'new');
+  states = []; cursor = 0;
+  currentEvent = structuredClone(firstApproval);
+  const workspace = () => { cursor = 0; return walk(MoodboardWorkspace({ event: currentEvent })); };
+  workspace().find(n => n.type === MoodboardBoardCard).props.onOpen();
+  workspace().find(n => n.type === MoodboardBoardDetail).props.onView(currentEvent.sections.moodboard[0]);
+  const panelProps = workspace().find(n => n.type === MoodboardPhotoPanel).props;
+  states = []; cursor = 0;
+  const panel = () => { cursor = 0; return walk(MoodboardPhotoPanel(panelProps)); };
+  const beforeView = writes;
+  assert(panel().some(n => text(n) === 'View details' && n.props.onClick));
+  assert(!panel().some(n => n.props.label?.startsWith('More actions for image')), 'Image more menu removed');
+  panel().find(n => text(n) === 'View details' && n.props.onClick).props.onClick();
+  const inspirationProps = panel().find(n => n.type === InspirationDetailsDialog).props;
+  const linkedDetails = InspirationDetailsDialog(inspirationProps);
+  assert.equal(linkedDetails.type, EventDecisionDetails);
+  assert.equal(linkedDetails.props.decisionId, firstApproval.sections.decisions[0].id);
+  assert.equal(writes, beforeView, 'Viewing details does not record or change any decision');
+  states = []; cursor = 0;
+  const detailsFromImage = () => { cursor = 0; return walk(EventDecisionDetails(linkedDetails.props)); };
+  assert(detailsFromImage().some(n => text(n) === 'Change decision' && n.props.onClick));
+  assert(detailsFromImage().some(n => text(n) === 'Delete inspiration' && n.props.onClick));
+  const noApproval = InspirationDetailsDialog({ ...inspirationProps, event: unapproved, photo: unapproved.sections.moodboard[0] });
+  assert(text(noApproval).includes('No decision recorded yet'));
+  assert(walk(noApproval).some(n => text(n) === 'Approve inspiration' && n.props.onClick));
+  // Exercise the shared confirmation callback using only memory fixtures.
+  states = []; cursor = 0;
+  workspace().find(n => n.type === MoodboardBoardCard).props.onOpen();
+  workspace().find(n => n.type === MoodboardBoardDetail).props.onView(currentEvent.sections.moodboard[0]);
+  const deleteProps = workspace().find(n => n.type === MoodboardPhotoPanel).props;
+  const decisionsBeforeDelete = JSON.stringify(currentEvent.sections.decisions);
+  deleteProps.onDelete();
+  const confirmation = workspace().find(n => n.type === DeleteConfirmation && n.props.open);
+  assert.equal(confirmation.props.title, 'Delete inspiration?');
+  assert.equal(currentEvent.sections.moodboard.length, 1, 'Delete action only opens confirmation');
+  assert.equal(confirmation.props.onConfirm(), true);
+  assert.equal(currentEvent.sections.moodboard.length, 0);
+  assert.equal(JSON.stringify(currentEvent.sections.decisions), decisionsBeforeDelete, 'Deleting inspiration preserves all recorded decisions and evidence');
+  states = []; cursor = 0;
+  const legacyForm = walk(ChangeDecisionDialog({ event: legacyApproval, decision: legacyApproval.sections.decisions[0], onClose() {}, onSaved() {} }));
+  assert(legacyForm.some(n => n.type === 'button' && text(n) === 'WhatsApp' && n.props['aria-pressed']), 'Legacy on-behalf decisions default to an available outside-app method');
+  assert(legacyForm.some(n => n.props['aria-label'] === 'Remove decision attachment'), 'Legacy image is visible when changing the decision');
+  console.log('PASS: immutable linked history, validation, current-only counts, stale requests, client confirmation/reminders, all form fields, cancel, optional attachments, original evidence preservation, history navigation and failed-save rollback. Memory fixtures only.');
+}
+ui().catch(error => { console.error(error); process.exitCode = 1; });

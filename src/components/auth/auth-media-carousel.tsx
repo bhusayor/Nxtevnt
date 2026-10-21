@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
-const slides = [
+const photoSlides = [
   {
     src: "/images/auth/nigerian-traditional-wedding.jpg",
     alt: "A Nigerian couple sharing a first dance in traditional wedding attire",
@@ -36,7 +36,32 @@ const slides = [
   },
 ] as const;
 
-export function AuthMediaCarousel() {
+const illustrationSlides = [
+  {
+    src: "/images/auth/signup-planner-3d.jpg",
+    alt: "3D illustration of a Nigerian event planner arranging a celebration moodboard",
+    title: "Bring the whole vision together.",
+    description: "Shape the details of every event in one thoughtful workspace.",
+    position: "center 42%",
+  },
+  {
+    src: "/images/auth/signup-timeline-3d.jpg",
+    alt: "3D illustration of a Nigerian planner organising an event timeline",
+    title: "Every step, right on time.",
+    description: "Keep plans, people and milestones moving in the same direction.",
+    position: "center 42%",
+  },
+  {
+    src: "/images/auth/signup-team-3d.jpg",
+    alt: "3D illustration of an event planner and vendor collaborating on a celebration",
+    title: "Better events happen together.",
+    description: "Collaborate with your team and vendors from the first idea to the final moment.",
+    position: "center 42%",
+  },
+] as const;
+
+export function AuthMediaCarousel({ variant = "photo" }: { variant?: "photo" | "illustration" }) {
+  const slides = variant === "illustration" ? illustrationSlides : photoSlides;
   const [activeIndex, setActiveIndex] = useState(0);
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
@@ -66,12 +91,12 @@ export function AuthMediaCarousel() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [paused]);
+  }, [paused, slides.length]);
 
   return (
     <section
       className="relative h-full min-h-[15rem] overflow-hidden rounded-[1.4rem] bg-brand-primary shadow-[var(--shadow-sm)]"
-      aria-label="Featured event photography"
+      aria-label={variant === "illustration" ? "Event planning illustrations" : "Featured event photography"}
       aria-roledescription="carousel"
       onMouseEnter={() => setInteractionPaused(true)}
       onMouseLeave={() => setInteractionPaused(false)}
@@ -101,10 +126,24 @@ export function AuthMediaCarousel() {
         </div>
       ))}
 
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,20,17,0.02)_0%,rgba(10,20,17,0.04)_48%,rgba(10,20,17,0.38)_100%)]" />
+      <div
+        className={cn(
+          "absolute inset-0",
+          variant === "illustration"
+            ? "bg-[linear-gradient(180deg,transparent_45%,rgba(25,43,35,0.12)_100%)]"
+            : "bg-[linear-gradient(180deg,rgba(10,20,17,0.02)_0%,rgba(10,20,17,0.04)_48%,rgba(10,20,17,0.38)_100%)]",
+        )}
+      />
 
       <div className="absolute inset-x-4 bottom-4 z-10 min-h-[12.25rem] text-white">
-        <div className="min-h-[12.25rem] rounded-[1.75rem] border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.29),rgba(255,255,255,0.14))] p-6 pb-7 shadow-[0_18px_45px_rgba(7,18,14,0.22)] backdrop-blur-xl">
+        <div
+          className={cn(
+            "min-h-[12.25rem] rounded-[1.75rem] border border-white/30 p-6 pb-7 shadow-[0_18px_45px_rgba(7,18,14,0.22)] backdrop-blur-xl",
+            variant === "illustration"
+              ? "bg-[linear-gradient(135deg,rgba(34,65,52,0.82),rgba(34,65,52,0.67))]"
+              : "bg-[linear-gradient(135deg,rgba(255,255,255,0.29),rgba(255,255,255,0.14))]",
+          )}
+        >
           <p className="text-lg font-semibold leading-tight tracking-[-0.025em] drop-shadow-sm sm:text-2xl lg:text-[1.75rem]">
             {slides[activeIndex].title}
           </p>

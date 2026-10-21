@@ -102,6 +102,6 @@ export function BudgetPortfolio() {
     </>}
 
     {unassignedGroups.length > 0 && <section className="flex flex-wrap items-center gap-4 rounded-xl border border-[#e6e2d8] bg-[#fbfaf7] px-5 py-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-[#8b7758]"><FolderOpen className="size-5" /></span><div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Unassigned costs</h2><p className="mt-0.5 text-xs text-text-secondary">{unassignedItems.length} {unassignedItems.length === 1 ? "item" : "items"} are not attached to an active event. They are kept separate from event totals.</p></div><Link href="/planner/budget/unassigned" className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-brand-primary">Review costs<ArrowRight className="size-3.5" aria-hidden="true" /></Link></section>}
-    <ImportBudgetDialog open={importOpen} onOpenChange={setImportOpen} events={events} targetEventId={null} requireEvent currency={currency} groups={groups} items={items} onImported={() => setMessage("Import complete. Open an event to review its budget items.")} />
+    <ImportBudgetDialog key={currency} open={importOpen} onOpenChange={setImportOpen} events={events} targetEventId={null} requireEvent currency={currency} groups={groups} items={items} onImported={() => setMessage("Import complete. Open an event to review its budget items.")} />
   </div>;
 }

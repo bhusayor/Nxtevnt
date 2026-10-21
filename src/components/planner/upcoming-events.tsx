@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCheck, MapPin, NotebookPen, Plus, UsersRound } from "@/components/ui/icons";
+import { ArrowRight, CalendarDays, MapPin, Plus } from "@/components/ui/icons";
+import { EventCardProgress } from "@/components/planner/event-card-progress";
 
 import { buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils/cn";
 import type { DashboardEvent } from "@/components/planner/overview-data";
-import { formatEventDate, getEventNotes, isCustomCover, isEventCancelled, isTaskActive, isTaskComplete, usePlannerEvents, type PlannerEvent } from "@/lib/planner-events";
+import { formatEventDate, formatEventPlace, getEventNotes, isCustomCover, isEventCancelled, isTaskActive, isTaskComplete, usePlannerEvents, type PlannerEvent } from "@/lib/planner-events";
 
 const tones = {
   sage: { avatar: "bg-success-soft text-success", surface: "bg-[#f1f6f2]", bar: "bg-[#729784]" },
@@ -19,23 +20,24 @@ const tones = {
 export function DashboardEventCard({ event, featured = false, adaptiveRow = false, featuredLabel = "Your next event" }: { event: DashboardEvent; featured?: boolean; adaptiveRow?: boolean; featuredLabel?: string }) {
   const tone = tones[event.tone];
   const href = `/planner/events/${event.slug}`;
+  const tasksComplete = event.tasksComplete ?? event.progress === 100;
+  const taskHref = `${href}?section=tasks${event.nextTaskId ? `&task=${encodeURIComponent(event.nextTaskId)}` : ""}`;
+  const imageSizes = featured ? "(min-width: 1024px) 40vw, 100vw" : "(min-width: 1200px) 30vw, (min-width: 768px) 45vw, 100vw";
   return (
-    <article className={cn("group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-subtle bg-white shadow-[0_3px_14px_-10px_rgba(28,41,36,0.2)] transition-[border-color,box-shadow] hover:border-border-strong/50 hover:shadow-[var(--shadow-sm)]", featured && "@min-[680px]/events:grid @min-[680px]/events:grid-cols-[44%_56%]", adaptiveRow && "@min-[560px]/events:grid @min-[560px]/events:grid-cols-[38%_62%] @min-[860px]/events:flex @min-[860px]/events:flex-col")}>
-      <Link href={href} className={cn("relative block h-48 overflow-hidden", featured && "h-56 @min-[680px]/events:h-full @min-[680px]/events:min-h-80", adaptiveRow && "@min-[560px]/events:h-full @min-[860px]/events:h-48")}>
-        <Image src={event.image} alt={event.alt} fill priority={featured} unoptimized={isCustomCover(event.image)} sizes={featured ? "(min-width: 1024px) 40vw, 100vw" : "(min-width: 1200px) 30vw, (min-width: 768px) 45vw, 100vw"} className="object-cover" style={{ objectPosition: event.position }} />
-        <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-black/10" aria-hidden="true" />
+    <article className={cn("group relative isolate flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-subtle bg-white shadow-[0_3px_14px_-10px_rgba(28,41,36,0.2)] transition-[border-color,box-shadow] hover:border-border-strong/50 hover:shadow-[var(--shadow-sm)]", featured && "@min-[680px]/events:grid @min-[680px]/events:grid-cols-[44%_56%]", adaptiveRow && "@min-[560px]/events:grid @min-[560px]/events:grid-cols-[38%_62%] @min-[860px]/events:flex @min-[860px]/events:flex-col")}>
+      <div className={cn("relative block h-60 overflow-hidden bg-[#29372f] sm:h-64", featured && "h-72 sm:h-80 @min-[680px]/events:h-full @min-[680px]/events:min-h-96", adaptiveRow && "@min-[560px]/events:h-full @min-[860px]/events:h-64")}>
+        <Image src={event.image} alt={event.alt} fill preload={featured} unoptimized={isCustomCover(event.image)} sizes={imageSizes} className="object-cover" style={{ objectPosition: event.position }} />
+        <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" aria-hidden="true" />
         <span className="absolute top-4 left-4 flex size-12 flex-col items-center justify-center rounded-lg bg-white/95 text-text-primary shadow-sm"><span className="text-[0.5625rem] font-semibold uppercase tracking-widest">{event.month}</span><span className="text-xl font-semibold leading-6 tracking-tight">{event.day}</span></span>
         <span className="absolute top-4 right-4"><StatusBadge status={event.status} showDot={false} /></span>
         <span className="absolute right-4 bottom-4 left-4 flex items-center justify-between gap-2 text-white"><span className="text-xs font-medium">{event.type}</span><span className="rounded-full border border-white/30 bg-black/15 px-2.5 py-1 text-[0.625rem] backdrop-blur-sm">{event.countdown}</span></span>
-      </Link>
+      </div>
       <div className={cn("flex min-w-0 flex-1 flex-col p-5", featured && "@min-[680px]/events:justify-center @min-[680px]/events:p-7")}>
         {featured && <p className="mb-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-brand-primary">{featuredLabel}</p>}
-        <h3 className={cn("min-w-0 text-base font-semibold tracking-[-0.025em] text-text-primary", featured && "text-xl")}><Link href={href} className="hover:text-brand-primary">{event.name}</Link></h3>
-        <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-text-secondary"><MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{event.location}</p>
-        <div className="mt-3 flex min-h-6 items-center gap-2">{event.client !== "Personal event" && <><span className={cn("flex size-6 items-center justify-center rounded-full text-[0.5625rem] font-semibold", tone.avatar)}>{event.initials}</span><p className="text-xs text-text-secondary"><span className="text-text-tertiary">Client · </span>{event.client}</p></>}</div>
-        {featured && <div className="mt-5 grid grid-cols-2 gap-3"><div className={cn("rounded-lg p-3", tone.surface)}><CheckCheck className="mb-1.5 size-4 text-brand-primary" aria-hidden="true" /><p className="text-sm font-semibold">{event.tasks}</p><p className="mt-0.5 text-[0.6875rem] text-text-secondary">Tasks complete</p></div><div className={cn("rounded-lg p-3", tone.surface)}>{event.secondaryLabel === "Notes" ? <NotebookPen className="mb-1.5 size-4 text-brand-primary" aria-hidden="true" /> : <UsersRound className="mb-1.5 size-4 text-brand-primary" aria-hidden="true" />}<p className="text-sm font-semibold">{event.secondaryValue}</p><p className="mt-0.5 text-[0.6875rem] text-text-secondary">{event.secondaryLabel}</p></div></div>}
-        <div className="mt-4"><div className="mb-2 flex items-center justify-between text-[0.6875rem]"><span className="text-text-tertiary">Planning progress</span><span className="font-semibold text-text-primary">{event.progress}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-[#f0f1ef]" role="progressbar" aria-label={`${event.name} planning progress`} aria-valuenow={event.progress} aria-valuemin={0} aria-valuemax={100}><div className={cn("h-full rounded-full", tone.bar)} style={{ width: `${event.progress}%` }} /></div></div>
-        <div className="mt-auto pt-4"><Link href={event.status === "cancelled" ? href : `${href}?section=tasks`} className={cn("block rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-selected", tone.surface)}><span className="min-w-0"><span className="block text-[0.5625rem] font-semibold uppercase tracking-wider text-text-tertiary">{event.status === "cancelled" ? "Event status" : "Next action"}</span><span className="mt-0.5 block text-xs font-medium text-text-primary">{event.status === "cancelled" ? "View saved event details" : event.next}</span></span></Link></div>
+        <h3 className={cn("min-w-0 text-base font-semibold tracking-[-0.025em] text-text-primary", featured && "text-xl")}><Link href={href} aria-label={`Open event: ${event.name}`} className="after:absolute after:inset-0 after:z-10 after:rounded-xl hover:text-brand-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-brand-primary">{event.name}</Link></h3>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-secondary"><p className="flex min-w-0 items-start gap-1.5 leading-5"><MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{event.location}</p>{event.client !== "Personal event" && <div className="flex min-w-0 items-center gap-1.5"><span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full text-[0.5rem] font-semibold", tone.avatar)}>{event.initials}</span><p className="min-w-0 truncate"><span className="text-text-tertiary">Client · </span>{event.client}</p></div>}</div>
+        <EventCardProgress event={event} />
+        <div className="mt-auto pt-3"><Link href={event.status === "cancelled" ? href : taskHref} aria-label={event.status === "cancelled" ? `View saved event: ${event.name}` : tasksComplete ? `Task completed: review tasks for ${event.name}` : `Next task for ${event.name}: ${event.next}`} className={cn("relative z-20 flex min-h-14 items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-selected focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary", tone.surface)}><span className="min-w-0"><span className="block text-[0.5625rem] font-semibold uppercase tracking-wider text-text-tertiary">{event.status === "cancelled" ? "Event status" : tasksComplete ? "Task completed" : "Next task"}</span><span className="mt-0.5 block text-xs font-medium text-text-primary">{event.status === "cancelled" ? "View saved event details" : tasksComplete ? "All tasks are done" : event.next}</span></span><ArrowRight className="size-4 shrink-0 text-brand-primary" aria-hidden="true" /></Link></div>
       </div>
     </article>
   );
@@ -47,6 +49,7 @@ export function asDashboardEvent(event: PlannerEvent): DashboardEvent {
   const daysUntil = Math.round((date.getTime() - new Date(`${today}T12:00:00`).getTime()) / 86_400_000);
   const tasks = (event.sections.tasks ?? []).filter(isTaskActive);
   const completed = tasks.filter(isTaskComplete).length;
+  const nextTask = tasks.find((task) => !isTaskComplete(task));
   const client = event.clientName || "Personal event";
   return {
     slug: event.id,
@@ -55,10 +58,12 @@ export function asDashboardEvent(event: PlannerEvent): DashboardEvent {
     date: formatEventDate(event.date),
     day: new Intl.DateTimeFormat("en-NG", { day: "2-digit" }).format(date),
     month: new Intl.DateTimeFormat("en-NG", { month: "short" }).format(date),
-    location: event.location || "Venue to be confirmed",
+    location: formatEventPlace(event),
     client,
     progress: tasks.length ? Math.round(completed / tasks.length * 100) : 0,
-    next: tasks.find((task) => !isTaskComplete(task))?.title || (tasks.length ? "All tasks complete" : "Add your first task"),
+    next: nextTask?.title || (tasks.length ? "Task completed" : "Add your first task"),
+    nextTaskId: nextTask?.id,
+    tasksComplete: tasks.length > 0 && completed === tasks.length,
     image: event.image,
     alt: `${event.type} event cover`,
     status: isEventCancelled(event) ? "cancelled" : daysUntil < 0 ? "past" : "upcoming",

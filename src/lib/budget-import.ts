@@ -1,5 +1,5 @@
 import type { BudgetGroup, BudgetItem, BudgetStatus, VendorStatus } from "@/lib/planner-budget";
-import { budgetDuplicateKey, budgetStatuses } from "@/lib/planner-budget";
+import { budgetDuplicateKey, budgetGroupNames, budgetStatuses } from "@/lib/planner-budget";
 
 export type ImportField = "group" | "item" | "vendor" | "vendorStatus" | "budgeted" | "invoiced" | "paid" | "status" | "paymentDate" | "notes";
 export type ImportMapping = Record<string, ImportField | "ignore">;
@@ -14,7 +14,7 @@ export const importFields: { value: ImportField; label: string; required?: boole
   { value: "budgeted", label: "Budgeted Amount", recommended: true },
   { value: "invoiced", label: "Invoiced" },
   { value: "paid", label: "Paid" },
-  { value: "status", label: "Status" },
+  { value: "status", label: "Payment status" },
   { value: "paymentDate", label: "Payment Date" },
   { value: "notes", label: "Notes" },
 ];
@@ -44,7 +44,8 @@ export function autoMapColumns(headers: string[]): ImportMapping {
 
 export async function readBudgetFile(file: File): Promise<BudgetSheet[]> {
   if (!/\.(csv|xlsx|xls)$/i.test(file.name)) throw new Error("Choose a CSV, XLSX or XLS file.");
-  if (file.size > 10 * 1024 * 1024) throw new Error("This file is too large. Choose a spreadsheet smaller than 10 MB.");
+  const limit = /\.csv$/i.test(file.name) ? 5 : 10;
+  if (file.size > limit * 1024 * 1024) throw new Error(`This file is too large. Choose a ${/\.csv$/i.test(file.name) ? "CSV" : "spreadsheet"} of ${limit} MB or less.`);
   try {
     const XLSX = await import("xlsx");
     const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
@@ -97,7 +98,7 @@ function parseStatus(raw: string): BudgetStatus | null {
   const normalized = raw.toLowerCase().replace(/[^a-z]+/g, " ").trim();
   const found = budgetStatuses.find((status) => status.label.toLowerCase() === normalized || status.value.replaceAll("-", " ") === normalized);
   if (found) return found.value;
-  if (["pending", "not booked", "open"].includes(normalized)) return "not-started";
+  if (["pending", "not booked", "open", "not started", "quoted"].includes(normalized)) return "not-started";
   if (["booked", "sourcing"].includes(normalized)) return "not-started";
   if (["partial", "part paid"].includes(normalized)) return "partially-paid";
   if (normalized === "complete") return "paid";
@@ -139,4 +140,8 @@ export function analyseImport(sheet: BudgetSheet, mapping: ImportMapping, eventI
   });
 }
 
-export const budgetTemplateCsv = "Budget Group,Budget Item,Vendor,Vendor Status,Budgeted Amount,Invoiced,Paid,Status,Payment Date,Notes\r\nCatering & Drinks,Reception catering,Savannah Catering,Booked,4500000,2500000,1000000,Partially paid,2026-12-12,Deposit due before the event\r\nDecor & Styling,Floral design,Bloomhouse NG,Sourcing,2800000,0,0,Quoted,,\r\n";
+const templateItemNames = ["Venue hire", "Guest catering", "Floral styling", "DJ or live band", "Event photography", "Outfits and styling", "Guest transport", "Invitations and signage", "Event security", "Guest accommodation", "Planning support", "Other event cost"];
+export const budgetTemplateCsv = [
+  ["Budget Group", "Budget Item", "Vendor", "Vendor Status", "Budgeted Amount", "Invoiced", "Paid", "Status", "Payment Date", "Notes"],
+  ...budgetGroupNames.map((name, index) => [name, templateItemNames[index], "", "Not sourced", "0", "0", "0", "Unpaid", "", ""]),
+].map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\r\n") + "\r\n";

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <AuthShell>
+    <AuthShell mode="signup">
       <SignupForm />
     </AuthShell>
   );

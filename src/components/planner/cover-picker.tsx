@@ -5,38 +5,8 @@ import Image from "next/image";
 import { Check, ImagePlus, LoaderCircle } from "@/components/ui/icons";
 
 import { eventCovers, isCustomCover } from "@/lib/planner-events";
+import { prepareEventImage } from "@/lib/event-images";
 import { cn } from "@/lib/utils/cn";
-
-async function prepareCover(file: File): Promise<string> {
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Choose a JPG, PNG or WebP image.");
-  if (file.size > 12 * 1024 * 1024) throw new Error("Choose an image smaller than 12 MB.");
-
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const source = new window.Image();
-    source.src = objectUrl;
-    await source.decode();
-    const longest = Math.max(source.naturalWidth, source.naturalHeight);
-    if (!longest) throw new Error("This image could not be opened.");
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("This image could not be prepared.");
-
-    for (const edge of [1400, 1150, 900, 700]) {
-      const scale = Math.min(1, edge / longest);
-      canvas.width = Math.max(1, Math.round(source.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(source.naturalHeight * scale));
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(source, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", edge > 900 ? 0.78 : 0.68);
-      if (dataUrl.length < 650_000) return dataUrl;
-    }
-    throw new Error("This image is too detailed to save here. Try a smaller photo.");
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
 
 export function CoverPicker({ value, onChange }: { value: string; onChange: (src: string) => void }) {
   const uploadId = useId();
@@ -50,7 +20,7 @@ export function CoverPicker({ value, onChange }: { value: string; onChange: (src
     setBusy(true);
     setError("");
     try {
-      const image = await prepareCover(file);
+      const image = await prepareEventImage(file);
       setCustomCover(image);
       onChange(image);
     } catch (failure) {

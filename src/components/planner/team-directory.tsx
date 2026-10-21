@@ -1,5 +1,7 @@
 "use client";
 
+import { DeleteConfirmation } from "@/components/ui/delete-confirmation";
+
 import { useState, type FormEvent } from "react";
 import { Plus, Trash2, UsersRound } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
@@ -23,8 +25,8 @@ export function TeamDirectory() {
   }
 
   function remove(id: string) {
-    try { removePlannerTeamMember(id); setPendingRemoval(null); setError(""); }
-    catch { setError("This member could not be removed. Please try again."); }
+    try { removePlannerTeamMember(id); setPendingRemoval(null); setError(""); return true; }
+    catch { setError("This member could not be removed. Please try again."); return false; }
   }
 
   return <div className="mx-auto w-full max-w-4xl space-y-7 pb-10">
@@ -32,7 +34,7 @@ export function TeamDirectory() {
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
       <section className="overflow-hidden rounded-2xl border border-border-subtle bg-white" aria-label="Team members">
         <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4"><div><h2 className="text-sm font-semibold">Members</h2><p className="mt-1 text-xs text-text-tertiary">{members.length} {members.length === 1 ? "person" : "people"} in your planner workspace</p></div><span className="flex size-9 items-center justify-center rounded-lg bg-[#edf4ee] text-brand-primary"><UsersRound className="size-4" aria-hidden="true" /></span></div>
-        <ul className="divide-y divide-border-subtle">{members.map((member) => <li key={member.id} className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e9f1eb] text-xs font-semibold text-brand-primary">{initials(member.name)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{member.name}</p><p className="mt-0.5 text-xs text-text-tertiary">{member.isOwner ? "Workspace owner" : "Team member"}</p></div>{!member.isOwner && (pendingRemoval === member.id ? <div className="flex items-center gap-2"><button type="button" onClick={() => setPendingRemoval(null)} className="min-h-9 px-2 text-xs font-semibold text-text-secondary">Keep</button><button type="button" onClick={() => remove(member.id)} className="min-h-9 rounded-lg bg-error-soft px-3 text-xs font-semibold text-error">Remove</button></div> : <button type="button" onClick={() => setPendingRemoval(member.id)} aria-label={`Remove ${member.name}`} className="flex size-9 items-center justify-center rounded-lg text-text-tertiary hover:bg-error-soft hover:text-error"><Trash2 className="size-4" aria-hidden="true" /></button>)}</li>)}</ul>
+        <ul className="divide-y divide-border-subtle">{members.map((member) => <li key={member.id} className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e9f1eb] text-xs font-semibold text-brand-primary">{initials(member.name)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{member.name}</p><p className="mt-0.5 text-xs text-text-tertiary">{member.isOwner ? "Workspace owner" : "Team member"}</p></div>{!member.isOwner && <><button type="button" onClick={() => setPendingRemoval(member.id)} aria-label={`Remove ${member.name}`} className="flex size-10 items-center justify-center rounded-lg text-text-tertiary hover:bg-error-soft hover:text-error"><Trash2 className="size-4" aria-hidden="true" /></button><DeleteConfirmation open={pendingRemoval === member.id} onOpenChange={(open) => { if (!open) setPendingRemoval(null); }} title="Remove team member?" description={`“${member.name}” will be removed from your team. Existing event work will remain.`} error={error} onConfirm={() => remove(member.id)} /></>}</li>)}</ul>
       </section>
       <form onSubmit={add} className="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6"><span className="flex size-9 items-center justify-center rounded-lg bg-[#edf4ee] text-brand-primary"><Plus className="size-4" aria-hidden="true" /></span><h2 className="mt-4 text-sm font-semibold">Add a team member</h2><p className="mt-1 text-xs leading-5 text-text-secondary">Add their name to make them available in event creation.</p><div className="mt-5"><Input label="Full name" placeholder="e.g. Tayo Adeyemi" value={name} maxLength={80} onChange={(event) => { setName(event.target.value); if (error) setError(""); }} required /></div>{error && <p role="alert" className="mt-3 text-xs text-error">{error}</p>}<Button type="submit" size="sm" className="mt-5" leadingIcon={<Plus className="size-4" aria-hidden="true" />}>Add member</Button><p className="mt-4 text-[0.6875rem] leading-5 text-text-tertiary">Names are saved in this browser. Adding someone here does not send an invitation.</p></form>
     </div>

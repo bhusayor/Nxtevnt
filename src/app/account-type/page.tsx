@@ -5,12 +5,12 @@ import { AuthShell } from "@/components/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Choose account type",
-  description: "Choose how you will use Nxtevnt.",
+  description: "Choose how you will use NXTEVNT.",
 };
 
 export default function AccountTypePage() {
   return (
-    <AuthShell>
+    <AuthShell mode="role">
       <AccountTypeSelection />
     </AuthShell>
   );

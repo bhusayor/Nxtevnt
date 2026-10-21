@@ -2,9 +2,13 @@
 
 import { useSyncExternalStore } from "react";
 import { guestCommunicationsMilestone } from "@/lib/event-setup-templates";
+import type { BudgetProposal } from "@/lib/budget-proposals";
+import type { MoodboardBoard } from "@/lib/planner-moodboards";
+import type { AgendaFields, AgendaSharing } from "@/lib/event-agenda";
 
 export type EventItem = {
   id: string;
+  sourceNoteId?: string;
   title: string;
   groupId?: string;
   detail?: string;
@@ -15,7 +19,42 @@ export type EventItem = {
   comments?: TaskComment[];
   amount?: number;
   time?: string;
+  agenda?: AgendaFields;
   url?: string;
+  image?: string;
+  imageCategory?: string;
+  imageAddedBy?: string;
+  imageAddedAt?: string;
+  imageFeedback?: "like" | "not-this" | "approved";
+  imageLiked?: boolean;
+  imagePinned?: boolean;
+  imagePinOrder?: number;
+  imageArchivedAt?: string;
+  designApproval?: {
+    mode: "client" | "on-behalf" | "recorded";
+    state: "awaiting-confirmation" | "approved-on-behalf" | "approved-by-client" | "recorded";
+    by: string; at: string; decisionId: string;
+    revision?: string;
+    method?: "whatsapp" | "call" | "in-person" | "email";
+    evidence?: string; evidenceName?: string;
+    confirmedBy?: string; confirmedAt?: string;
+    requestedAt?: string; remindedAt?: string; reminderCount?: number;
+    delivery?: "local-preview";
+  };
+  decisionCategory?: "Budget" | "Design" | "Vendors" | "Guests" | "Venue & dates" | "Programme";
+  supersedesDecisionId?: string;
+  decisionRecord?: {
+    decidedBy: "client" | "someone-else" | "on-behalf";
+    name: string;
+    method: "in-app" | "whatsapp" | "call" | "in-person" | "email";
+    decidedOn: string;
+    recordedAt: string;
+    recordedBy: string;
+    note?: string;
+  };
+  sourceMoodboardImageId?: string;
+  sourceMoodboardBoardId?: string;
+  boardId?: string;
   done?: boolean;
   dueDate?: string;
 };
@@ -52,9 +91,14 @@ export type EventSections = {
 
 export type EventNote = {
   id: string;
+  title?: string;
   body: string;
   author: string;
+  authorId?: string;
+  authorAvatar?: string;
   createdAt: string;
+  updatedAt?: string;
+  taskId?: string;
   pinned: boolean;
 };
 
@@ -81,6 +125,10 @@ export type PlannerEvent = {
   startTime: string;
   endTime: string;
   location: string;
+  city?: string;
+  currency?: string;
+  timeZone?: string;
+  clientId?: string;
   clientName: string;
   guestCount: string;
   budget: string;
@@ -88,7 +136,7 @@ export type PlannerEvent = {
   targetBudget?: string;
   milestoneTemplateId?: string;
   assignedTeamMember?: string;
-  priority?: "high" | "standard" | "low";
+  priority?: "highest" | "high" | "standard" | "low";
   description: string;
   image: string;
   createdAt: string;
@@ -98,10 +146,13 @@ export type PlannerEvent = {
   noteEntries?: EventNote[];
   questionnaires?: SentQuestionnaire[];
   taskGroups?: EventTaskGroup[];
+  budgetProposals?: BudgetProposal[];
+  moodboardBoards?: MoodboardBoard[];
+  agendaSharing?: AgendaSharing;
   sections: EventSections;
 };
 
-export type NewPlannerEvent = Pick<PlannerEvent, "name" | "type" | "date" | "startTime" | "endTime" | "location" | "clientName" | "guestCount" | "budget" | "description" | "image"> & Pick<PlannerEvent, "budgetTemplateId" | "targetBudget" | "milestoneTemplateId" | "assignedTeamMember" | "priority">;
+export type NewPlannerEvent = Pick<PlannerEvent, "name" | "type" | "date" | "startTime" | "endTime" | "location" | "clientName" | "guestCount" | "budget" | "description" | "image"> & Pick<PlannerEvent, "city" | "currency" | "timeZone" | "clientId" | "budgetTemplateId" | "targetBudget" | "milestoneTemplateId" | "assignedTeamMember" | "priority">;
 
 export const eventCovers = [
   { src: "/images/auth/nigerian-wedding-party.jpg", label: "Celebration" },
@@ -250,6 +301,10 @@ export function formatEventDate(date: string, options?: Intl.DateTimeFormatOptio
 
 export function formatNaira(value: number) {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
+}
+
+export function formatEventPlace(event: Pick<PlannerEvent, "location" | "city">) {
+  return [event.location?.trim(), event.city?.trim()].filter(Boolean).join(", ") || "Location to be confirmed";
 }
 
 export function formatGroupedDigits(value: string) {

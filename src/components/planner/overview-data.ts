@@ -11,6 +11,8 @@ export type DashboardEvent = {
   client: string;
   progress: number;
   next: string;
+  nextTaskId?: string;
+  tasksComplete?: boolean;
   image: string;
   alt: string;
   status: ProductStatus;

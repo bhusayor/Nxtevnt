@@ -13,10 +13,9 @@ const firstSteps = [
   { number: "03", title: "Keep things moving", description: "See what needs attention", icon: CheckCheck },
 ];
 
-export function EmptyPlannerOverview() {
+export function EmptyPlannerOverview({ showSummary = true }: { showSummary?: boolean }) {
   return <div className="space-y-7">
-    <VerificationPrompt />
-    <WorkSnapshot />
+    {showSummary && <><VerificationPrompt /><WorkSnapshot /></>}
 
     <section aria-labelledby="first-event-title" className="grid min-w-0 overflow-hidden rounded-[1.5rem] border border-[#dce9de] bg-gradient-to-br from-[#f0f7f1] via-[#f8faf6] to-[#fbf5ed] shadow-[0_14px_44px_-36px_rgba(35,70,48,0.28)] lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
       <div className="flex min-w-0 flex-col justify-between px-6 py-7 sm:px-9 sm:py-9 lg:px-11 lg:py-11">

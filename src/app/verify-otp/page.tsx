@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function VerifyOtpPage() {
   return (
-    <AuthShell>
+    <AuthShell mediaVariant="illustration">
       <OtpVerificationForm />
     </AuthShell>
   );
