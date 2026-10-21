@@ -7,6 +7,7 @@ import { ArrowRight, BadgeCheck, ShieldCheck } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { usePlannerVerified } from "@/lib/planner-business";
+import { useVerificationCheckpoint } from "@/lib/planner-verification";
 
 const verificationStorageKey = "nxtevnt-planner-verification-started";
 const verificationEvent = "nxtevnt-verification-change";
@@ -21,17 +22,17 @@ function subscribeToVerification(callback: () => void) {
 }
 
 function getVerificationSnapshot() {
-  return window.localStorage.getItem(verificationStorageKey) === "true";
+  try { return window.localStorage.getItem(verificationStorageKey) === "true"; } catch { return false; }
 }
 
 export function VerificationPrompt() {
   const router = useRouter();
-  const started = useSyncExternalStore(subscribeToVerification, getVerificationSnapshot, () => false);
+  const legacyStarted = useSyncExternalStore(subscribeToVerification, getVerificationSnapshot, () => false);
+  const checkpoint = useVerificationCheckpoint();
+  const started = legacyStarted || Boolean(checkpoint.updatedAt);
   const verified = usePlannerVerified();
 
   function openVerification() {
-    window.localStorage.setItem(verificationStorageKey, "true");
-    window.dispatchEvent(new Event(verificationEvent));
     router.push("/planner/verification");
   }
 

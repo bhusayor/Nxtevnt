@@ -46,6 +46,7 @@ function inquirySnapshot() {
   return cachedInquiries;
 }
 export function usePlannerProfile() { return useSyncExternalStore(subscribe, profileSnapshot, () => emptyProfile); }
+export function useHasSavedPlannerProfile() { return useSyncExternalStore(subscribe, () => Boolean(read(profileKey)), () => false); }
 export function savePlannerProfile(profile: PlannerProfile) {
   window.localStorage.setItem(profileKey, JSON.stringify(profile)); profileRaw = undefined; window.dispatchEvent(new Event(change));
 }
