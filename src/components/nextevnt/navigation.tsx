@@ -34,7 +34,7 @@ const navGroups = [
 export function DesktopSidebar({ collapsed = false, previewHover = false }: { collapsed?: boolean; previewHover?: boolean }) {
   return (
     <aside className={cn("flex h-[37rem] flex-col border border-border-default bg-surface py-3", collapsed ? "w-16" : "w-60")}>
-      <div className={cn("mb-4 flex h-10 items-center gap-3 px-4", collapsed && "justify-center px-0")}><BrandMark />{!collapsed ? <div><p className="text-sm font-semibold leading-tight text-text-primary">Nxtevnt</p><p className="mt-0.5 text-[0.625rem] text-text-tertiary">Planner workspace</p></div> : null}</div>
+      <div className={cn("mb-4 flex h-10 items-center gap-3 px-4", collapsed && "justify-center px-0")}><BrandMark />{!collapsed ? <div><p className="text-sm font-semibold leading-tight text-text-primary">NXTEVNT</p><p className="mt-0.5 text-[0.625rem] text-text-tertiary">Planner workspace</p></div> : null}</div>
       <nav className="grid flex-1 content-start gap-4 px-2" aria-label="Planner navigation">
         {navGroups.map((group) => <div key={group.label} className="grid gap-0.5">{!collapsed ? <p className="px-2 py-1.5 text-[0.625rem] font-semibold tracking-[0.08em] text-text-tertiary uppercase">{group.label}</p> : <Divider className="my-1" />}{group.items.map(([label, NavIcon]) => {
           const active = label === "Events";

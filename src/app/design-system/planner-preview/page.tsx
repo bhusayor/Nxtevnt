@@ -11,7 +11,7 @@ export default function PlannerLayoutPreview() {
   const [count, setCount] = useState(3);
   const [mobile, setMobile] = useState(false);
   return (
-    <main className="min-h-screen bg-background px-4 py-8 sm:px-10">
+    <main className="app-canvas min-h-screen px-4 py-8 sm:px-10">
       <Link href="/planner" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />Back to dashboard</Link>
       <h1 className="mt-6 text-2xl font-semibold">Upcoming event layouts</h1>
       <p className="mt-2 text-sm text-text-secondary">Check how the same component adapts to the number of events and the space available.</p>

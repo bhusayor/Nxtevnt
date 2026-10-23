@@ -14,7 +14,7 @@ export function AuthShell({ children, mode = "default", mediaVariant }: { childr
 
         <section className={`order-2 flex min-h-screen flex-col px-6 py-7 sm:px-10 sm:py-9 md:order-1 md:min-h-0 md:px-9 lg:px-12 ${mode === "signup" ? "md:py-5" : ""}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/" className="inline-flex w-fit items-center gap-2.5 rounded-[var(--radius-md)] text-text-primary" aria-label="Nxtevnt home">
+          <Link href="/" className="inline-flex w-fit items-center gap-2.5 rounded-[var(--radius-md)] text-text-primary" aria-label="NXTEVNT home">
             <BrandMark size={mode === "signup" ? "md" : "sm"} />
             <span className={mode === "signup" ? "text-xl font-bold tracking-[-0.035em]" : "text-base font-bold tracking-[-0.025em]"}>NXTEVNT</span>
           </Link>

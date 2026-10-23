@@ -30,6 +30,6 @@ export function LoginForm() {
     </form>
     <AuthDivider />
     <SocialAuthButtons mode="login" />
-    <p className="type-body-small text-center text-text-secondary">New to Nxtevnt?{" "}<Link href="/signup" className="font-semibold text-brand-primary hover:underline hover:underline-offset-4">Create an account</Link></p>
+    <p className="type-body-small text-center text-text-secondary">New to NXTEVNT?{" "}<Link href="/signup" className="font-semibold text-brand-primary hover:underline hover:underline-offset-4">Create an account</Link></p>
   </div>;
 }

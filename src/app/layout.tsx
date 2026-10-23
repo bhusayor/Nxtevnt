@@ -10,8 +10,8 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Nxtevnt",
-    template: "%s · Nxtevnt",
+    default: "NXTEVNT",
+    template: "%s · NXTEVNT",
   },
   description: "Plan memorable events in one thoughtful workspace.",
 };

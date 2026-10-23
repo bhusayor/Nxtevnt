@@ -71,9 +71,9 @@ export function PlannerShell({ children, role = "planner" }: { children: ReactNo
   }, [role]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-canvas min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border-subtle bg-surface lg:flex">
-        <Link href={home} className="flex h-16 items-center gap-2 border-b border-border-subtle px-5" aria-label="Nxtevnt home">
+        <Link href={home} className="flex h-16 items-center gap-2 border-b border-border-subtle px-5" aria-label="NXTEVNT home">
           <BrandMark size="sm" />
           <span className="text-[0.9375rem] font-bold tracking-[-0.02em] text-text-primary">NXTEVNT</span>
         </Link>
@@ -128,8 +128,8 @@ export function PlannerShell({ children, role = "planner" }: { children: ReactNo
               <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 z-50 bg-[#17251d]/55 data-[state=open]:animate-in data-[state=closed]:animate-out lg:hidden" />
                 <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-[min(19rem,85vw)] flex-col overflow-hidden rounded-r-2xl bg-white shadow-2xl focus:outline-none lg:hidden" aria-describedby="mobile-navigation-description">
-                  <Dialog.Title className="sr-only">Dashboard navigation</Dialog.Title><Dialog.Description id="mobile-navigation-description" className="sr-only">Navigate your Nxtevnt workspace.</Dialog.Description>
-                  <div className="flex items-center justify-between gap-2 p-3"><Link href={home} onClick={() => setMobileMenuOpen(false)} className="flex h-12 flex-1 items-center gap-2 rounded-xl border border-border-subtle px-3" aria-label="Nxtevnt home"><BrandMark size="sm" /><span className="text-sm font-bold tracking-[-0.02em] text-text-primary">NXTEVNT</span></Link><Dialog.Close asChild><button type="button" aria-label="Close dashboard navigation" className="flex size-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-background-subtle"><X className="size-5" weight="bold" aria-hidden="true" /></button></Dialog.Close></div>
+                  <Dialog.Title className="sr-only">Dashboard navigation</Dialog.Title><Dialog.Description id="mobile-navigation-description" className="sr-only">Navigate your NXTEVNT workspace.</Dialog.Description>
+                  <div className="flex items-center justify-between gap-2 p-3"><Link href={home} onClick={() => setMobileMenuOpen(false)} className="flex h-12 flex-1 items-center gap-2 rounded-xl border border-border-subtle px-3" aria-label="NXTEVNT home"><BrandMark size="sm" /><span className="text-sm font-bold tracking-[-0.02em] text-text-primary">NXTEVNT</span></Link><Dialog.Close asChild><button type="button" aria-label="Close dashboard navigation" className="flex size-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-background-subtle"><X className="size-5" weight="bold" aria-hidden="true" /></button></Dialog.Close></div>
                   <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4" aria-label="Mobile workspace navigation">
                     {role === "planner" ? navGroups.map((group) => (
                       <div key={group.label}>

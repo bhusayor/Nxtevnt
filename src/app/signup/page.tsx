@@ -5,7 +5,7 @@ import { SignupForm } from "@/components/auth/signup-form";
 
 export const metadata: Metadata = {
   title: "Create account",
-  description: "Create your Nxtevnt account.",
+  description: "Create your NXTEVNT account.",
 };
 
 export default function SignupPage() {

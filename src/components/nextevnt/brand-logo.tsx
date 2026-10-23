@@ -20,5 +20,5 @@ export function BrandMark({ size = "sm", className }: { size?: "sm" | "md"; clas
 }
 
 export function BrandLogo({ className, priority = false }: { className?: string; priority?: boolean }) {
-  return <Image src={logoSrc} alt="Nxtevnt" width={500} height={500} priority={priority} className={cn("h-auto w-full", className)} />;
+  return <Image src={logoSrc} alt="NXTEVNT" width={500} height={500} priority={priority} className={cn("h-auto w-full", className)} />;
 }

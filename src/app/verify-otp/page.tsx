@@ -5,7 +5,7 @@ import { OtpVerificationForm } from "@/components/auth/otp-verification-form";
 
 export const metadata: Metadata = {
   title: "Verify your email",
-  description: "Verify your Nxtevnt account email.",
+  description: "Verify your NXTEVNT account email.",
 };
 
 export default function VerifyOtpPage() {

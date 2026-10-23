@@ -36,7 +36,7 @@ export function FormControlsDemo() {
       </div>
       <div className="grid content-start gap-5">
         <Checkbox label="Email updates" description="Receive important event and payment updates." defaultChecked />
-        <Checkbox label="Vendor suggestions" description="Personalized recommendations from Nxtevnt." />
+        <Checkbox label="Vendor suggestions" description="Personalized recommendations from NXTEVNT." />
         <Checkbox label="Terms accepted" error="You must accept the terms to continue." />
         <Checkbox label="Unavailable option" disabled />
       </div>
@@ -60,7 +60,7 @@ export function FormControlsDemo() {
 }
 
 export function PasswordDemo() {
-  const [password, setPassword] = useState("Nxtevnt9");
+  const [password, setPassword] = useState("NXTEVNT9");
 
   return (
     <div className="grid gap-5">

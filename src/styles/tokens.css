@@ -10,6 +10,12 @@
 
   /* Background and surfaces */
   --background: #fafafa;
+  --canvas-base: #f9faf8;
+  --canvas-gradient:
+    radial-gradient(ellipse at 5% 0%, #edf4ef 0%, transparent 54%),
+    radial-gradient(ellipse at 100% 12%, #f8f1e7 0%, transparent 48%),
+    radial-gradient(ellipse at 75% 100%, #eff3f7 0%, transparent 58%),
+    linear-gradient(145deg, #f8faf6 0%, #fcfaf7 52%, #f5f8f6 100%);
   --background-subtle: #f3f1eb;
   --surface: #ffffff;
   --surface-subtle: #faf9f6;

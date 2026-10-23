@@ -3,7 +3,7 @@ import { VerificationWorkspace } from "@/components/planner/verification/verific
 
 export const metadata: Metadata = {
   title: "Planner verification",
-  description: "Complete your Nxtevnt planner verification.",
+  description: "Complete your NXTEVNT planner verification.",
 };
 
 export default function PlannerVerificationPage() {

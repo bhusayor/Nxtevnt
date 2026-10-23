@@ -21,6 +21,8 @@ const { Button, buttonVariants } = require('../src/components/ui/button.tsx');
 for (const [value, label] of [[0, '0.00'], [1, '1.00'], [10, '10.00'], [1234, '1,234.00']]) {
   balance = value;
   const html = renderToStaticMarkup(React.createElement(PlannerShell, null, React.createElement('p', null, 'Workspace content')));
+  assert(html.includes('app-canvas min-h-screen'), 'Every workspace uses the shared gradient canvas');
+  assert(html.includes('NXTEVNT home')); assert(!html.includes('Nxtevnt'));
   const header = html.match(/<header[^>]*>[\s\S]*?<\/header>/)[0];
   assert(header.includes(`View credits, ${label} available`)); assert(header.includes(`<span>${label}</span>`));
   assert(header.includes('data-workspace-header-pill')); assert(header.includes('rounded-full')); assert(header.includes('bg-white/75')); assert(header.includes('backdrop-blur-xl'));
@@ -44,4 +46,27 @@ const loading = renderToStaticMarkup(React.createElement(Button, { loading: true
 const tokens = fs.readFileSync(path.join(root, 'src/styles/tokens.css'), 'utf8');
 const luminance = hex => hex.slice(1).match(/../g).map(part => parseInt(part, 16) / 255).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4).reduce((sum, value, i) => sum + value * [.2126, .7152, .0722][i], 0);
 for (const color of [tokens.match(/--credit-gold: (#[0-9a-f]+);/)[1], ...tokens.match(/--action-primary-gradient: ([^;]+);/)[1].match(/#[0-9a-f]{6}/g)]) assert(1.05 / (luminance(color) + .05) >= 4.5, `${color} must maintain readable white/gold contrast`);
+const canvas = tokens.match(/--canvas-gradient:([\s\S]*?);/)[1];
+assert.equal((canvas.match(/radial-gradient/g) || []).length, 3);
+const secondaryText = tokens.match(/--text-secondary: (#[0-9a-f]+);/)[1];
+for (const color of canvas.match(/#[0-9a-f]{6}/g)) {
+  assert((luminance(color) + .05) / (luminance(secondaryText) + .05) >= 4.5, 'Canvas keeps body text readable');
+  assert(luminance(color) >= .86, 'Canvas colours remain soft and close to white');
+}
+const css = fs.readFileSync(path.join(root, 'src/app/globals.css'), 'utf8');
+assert(css.includes('body, .app-canvas')); assert(css.includes('background-image: var(--canvas-gradient)'));
+assert(css.includes('background-size: 100% 100%'), 'Gradient covers the full document, not just the first viewport');
+assert(!/background-size:[^;]*(?:vh|rem|px)/.test(css), 'No fixed-height cutoff on long pages');
+assert(!css.includes('background-attachment: fixed'), 'No fixed-background scroll penalty on mobile');
+const profileEditor = fs.readFileSync(path.join(root, 'src/components/planner/profile/profile-editor.tsx'), 'utf8');
+assert(profileEditor.includes('Public profile link')); assert(profileEditor.includes('Copy profile link')); assert(!profileEditor.includes('Copy preview link'));
+assert(profileEditor.includes('window.location.origin}/planners/${encodeURIComponent(storedProfile.slug)}'), 'Copy destination remains unchanged');
+function checkBranding(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) checkBranding(file);
+    else if (/\.(tsx?|css)$/.test(entry.name)) assert(!/Nxtevnt|Nextevnt|NextEvnt/.test(fs.readFileSync(file, 'utf8')), `${file} uses uppercase branding`);
+  }
+}
+checkBranding(path.join(root, 'src'));
 console.log('PASS: two-decimal credits; gold wallet; glass pill; mobile visibility and accessible roles; no Beta/feedback; stable sticky offsets; shared green gradient states and text contrast. Render fixtures only.');

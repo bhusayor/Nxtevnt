@@ -24,7 +24,7 @@ const photoSlides = [
     src: "/images/auth/lagos-nightlife.jpg",
     alt: "A DJ performing beneath vivid blue and red lights at a Lagos party",
     title: "Less admin. More planning.",
-    description: "Stay focused on the experience while Nxtevnt keeps the work organised.",
+    description: "Stay focused on the experience while NXTEVNT keeps the work organised.",
     position: "center 42%",
   },
   {

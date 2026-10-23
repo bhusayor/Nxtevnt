@@ -5,7 +5,7 @@ import { PlannerShell } from "@/components/planner/planner-shell";
 
 export default function PlannerLayout({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<div className="app-canvas min-h-screen" />}>
       <PlannerShell>{children}</PlannerShell>
     </Suspense>
   );

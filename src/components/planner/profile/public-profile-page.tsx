@@ -35,7 +35,7 @@ export function PublicPlannerProfile({ slug }: { slug: string }) {
     try { const key = `nxtevnt:profile-preview-view:${slug}`; if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, "true"); recordProfileMetric("view"); } } catch { /* Browsing does not require tracking. */ }
   }, [profile.slug, slug]);
 
-  if (profile.slug !== slug) return <main className="flex min-h-screen flex-col items-center justify-center bg-[#fafafa] px-6 text-center"><BrandMark size="md" /><p className="mt-8 text-xs font-semibold uppercase tracking-widest text-text-tertiary">NXTEVNT planner profiles</p><h1 className="mt-3 text-3xl font-semibold tracking-tight">This profile isn’t available</h1><p className="mt-4 max-w-md text-sm leading-7 text-text-secondary">The link may have changed, or this profile hasn’t been published. Ask the planner for their latest link.</p></main>;
+  if (profile.slug !== slug) return <main className="flex min-h-screen flex-col items-center justify-center app-canvas px-6 text-center"><BrandMark size="md" /><p className="mt-8 text-xs font-semibold uppercase tracking-widest text-text-tertiary">NXTEVNT planner profiles</p><h1 className="mt-3 text-3xl font-semibold tracking-tight">This profile isn’t available</h1><p className="mt-4 max-w-md text-sm leading-7 text-text-secondary">The link may have changed, or this profile hasn’t been published. Ask the planner for their latest link.</p></main>;
 
   const busyDates = new Set([...profile.booking.blockedDates, ...events.filter((event) => !isEventCancelled(event)).map((event) => event.date)]);
   const rating = profile.reviews.length ? profile.reviews.reduce((sum, review) => sum + review.rating, 0) / profile.reviews.length : 0;
@@ -48,7 +48,7 @@ export function PublicPlannerProfile({ slug }: { slug: string }) {
   const contactAction = () => recordProfileMetric("contact");
   const consultation = profile.consultation;
 
-  return <div id="profile-top" className="min-h-screen bg-[#fafafa] pb-24 text-text-primary sm:pb-0">
+  return <div id="profile-top" className="app-canvas min-h-screen pb-24 text-text-primary sm:pb-0">
     <a href="#about" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:p-4">Skip to profile</a>
     <header className="border-b border-border-subtle bg-white">
       <div className="mx-auto flex min-h-18 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8 lg:px-10"><a href="#profile-top" className="inline-flex items-center gap-2" aria-label="NXTEVNT, back to top"><BrandMark /><span className="text-sm font-semibold tracking-tight">NXTEVNT</span></a><span className="rounded-full border border-border-subtle px-3 py-1.5 text-[0.625rem] font-medium text-text-secondary">Visitor preview</span></div>
