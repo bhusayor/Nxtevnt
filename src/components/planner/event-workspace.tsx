@@ -9,8 +9,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {
   Ban, BookOpenText, CalendarClock, CalendarDays, Check,
   ChevronRight, CircleDollarSign, ClipboardCheck,
-  FileText, ImageIcon, Link2, Plus, Scale,
-  RotateCcw, Trash2, Wallet, UsersRound, SlidersHorizontal,
+  FileText, Folder, ImageIcon, Link2, Plus, Scale,
+  RotateCcw, Trash2, Wallet, SlidersHorizontal,
 } from "@/components/ui/icons";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -19,11 +19,12 @@ import { EventMoodboard } from "@/components/planner/event-moodboard";
 import { AgendaWorkspace } from "@/components/planner/agenda/agenda-workspace";
 import { EventDecisionsList } from "@/components/planner/event-decision-details";
 import { EventBudgetProposals } from "@/components/planner/budget/event-budget-proposals";
-import { EventControlRoom, EventGuestSummary } from "@/components/planner/event-workspace-extras";
+import { EventControlRoom } from "@/components/planner/event-workspace-extras";
 import { budgetWorkspaceTab, workspaceSection, type WorkspaceSection } from "@/lib/event-workspace-navigation";
 import { EventNotesQuestionnaires } from "@/components/planner/event-notes-questionnaires";
 import { EventCancellationDialog } from "@/components/planner/event-cancellation-dialog";
 import { TaskWorkspace } from "@/components/planner/task-workspace";
+import { EventFilesWorkspace } from "./event-files-workspace";
 import { deleteBudgetAttachments } from "@/lib/budget-attachments";
 import { deleteMoodboardImage } from "@/lib/moodboard-images";
 import { deleteBudgetForEvent, formatBudgetMoney, useBudgetStore } from "@/lib/planner-budget";
@@ -42,13 +43,12 @@ type CollectionId = keyof EventSections;
 const sections = [
   { id: "overview", label: "Event overview", icon: BookOpenText, description: "The big picture, all in one place." },
   { id: "notes", label: "Notes and Decision", icon: FileText, description: "Keep notes, questionnaires and decisions together." },
-  { id: "guests", label: "Guest", icon: UsersRound, description: "The people you’re planning for." },
-  { id: "proposal", label: "Budget proposal", icon: CircleDollarSign, description: "Manage the live budget and compare three proposal options." },
+  { id: "proposal", label: "Budget", icon: CircleDollarSign, description: "Manage the live budget and compare three proposal options." },
   { id: "tasks", label: "Tasks", icon: ClipboardCheck, description: "Turn the plan into clear next steps." },
-  { id: "moodboard", label: "Moodboard", icon: ImageIcon, description: "Gather inspiration in one place." },
+  { id: "moodboard", label: "Mood board", icon: ImageIcon, description: "Gather inspiration in one place." },
   { id: "agenda", label: "Agenda & timelines", icon: CalendarClock, description: "Map out the flow of the day." },
   { id: "control-room", label: "Control room", icon: SlidersHorizontal, description: "A focused check on the plan." },
-  { id: "files", label: "Files", icon: Link2, description: "Keep important document links close." },
+  { id: "files", label: "Files", icon: Folder, description: "Keep event uploads and documents organised." },
 ] as const satisfies readonly { id: SectionId; label: string; icon: typeof BookOpenText; description: string }[];
 
 const sectionCopy: Record<CollectionId, { heading: string; empty: string; action: string; placeholder: string; tone: string }> = {
@@ -147,10 +147,11 @@ export function EventWorkspace({ id, initialSection, initialTab, initialAction, 
     setDeleteBusy(true);
     setDeleteError("");
     try {
-      const attachments = budgetStore.items.filter((item) => item.eventId === id).flatMap((item) => item.attachments.map((attachment) => attachment.id));
+      const attachments = budgetStore.items.filter((item) => item.eventId === id).flatMap((item) => [...item.attachments.map((attachment) => attachment.id), ...(item.payments ?? []).flatMap((payment) => payment.receipt ? [payment.receipt.id] : [])]);
       await deleteBudgetAttachments(attachments);
       deleteBudgetForEvent(id);
       deletePlannerEvent(id);
+      await deleteBudgetAttachments((event.fileEntries ?? []).map(file => file.storageId)).catch(() => undefined);
       // Only remove image payloads after the event metadata was successfully deleted.
       await Promise.all([...event.sections.moodboard, ...event.sections.decisions].flatMap((item) => [deleteMoodboardImage(item.image).catch(() => {}), deleteMoodboardImage(item.designApproval?.evidence).catch(() => {})]));
       router.replace("/planner/events");
@@ -169,15 +170,14 @@ export function EventWorkspace({ id, initialSection, initialTab, initialAction, 
     <nav aria-label="Event sections" className="min-w-0 overflow-hidden rounded-xl border border-border-subtle bg-white px-2 sm:px-3"><div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Event sections">{sections.map((item) => <button key={item.id} id={`event-tab-${item.id}`} type="button" role="tab" aria-selected={active === item.id} aria-controls="event-panel" onClick={() => { setSelectedTaskId(undefined); setAddingMoodboardPhoto(false); setActive(item.id); }} className={cn("flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary", active === item.id ? "border-brand-primary font-semibold text-brand-primary" : "border-transparent text-text-secondary hover:border-border-subtle hover:text-text-primary")}><item.icon className="size-4 shrink-0" aria-hidden="true" />{item.label}</button>)}</div></nav>
     {cancelled && <div className="flex items-start gap-3 rounded-xl border border-[#f0dcdc] bg-[#fcf5f5] p-4 text-sm text-[#824949]"><Ban className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><div><p className="font-semibold">This event is cancelled</p><p className="mt-1 text-xs leading-5">It won’t appear in upcoming plans. All planning details remain here{event.cancellationReason ? ` · ${event.cancellationReason}` : "."}</p></div></div>}
     <div id="event-panel" role="tabpanel" aria-labelledby={`event-tab-${active}`} className="min-w-0">
-        {active === "overview" && <EventOverviewPanel event={event} onOpenTasks={(taskId) => { setSelectedTaskId(taskId); setActive("tasks"); }} onOpenMoodboard={(addPhoto) => { setAddingMoodboardPhoto(Boolean(addPhoto)); setActive("moodboard"); }} />}
+        {active === "overview" && <EventOverviewPanel event={event} onOpenTasks={(taskId) => { setSelectedTaskId(taskId); setActive("tasks"); }} onOpenMoodboard={(addPhoto) => { setAddingMoodboardPhoto(Boolean(addPhoto)); setActive("moodboard"); }} onOpenDecisions={() => { setNotesTab("decisions"); setActive("notes"); }} />}
         {active === "notes" && <EventNotesQuestionnaires key={event.id} event={event} initialTab={notesTab} decisions={<CollectionPanel event={event} section="decisions" />} initialAction={quickAction} onActionConsumed={() => setQuickAction(undefined)} />}
-        {active === "guests" && <EventGuestSummary event={event} />}
         {active === "proposal" && <EventBudgetProposals key={event.id} event={event} initialTab={budgetWorkspaceTab(initialSection, initialTab)} />}
-        {active === "tasks" && <TaskWorkspace event={event} initialTaskId={selectedTaskId} />}
+        {active === "tasks" && <TaskWorkspace event={event} initialTaskId={selectedTaskId} initialAction={quickAction} onActionConsumed={() => setQuickAction(undefined)} />}
         {active === "moodboard" && <EventMoodboard event={event} startAdding={addingMoodboardPhoto} />}
         {active === "agenda" && <AgendaWorkspace key={event.id} event={event} />}
         {active === "control-room" && <EventControlRoom event={event} onOpenTasks={() => setActive("tasks")} onOpenAgenda={() => setActive("agenda")} onOpenDecisions={() => { setNotesTab("decisions"); setActive("notes"); }} />}
-        {active === "files" && <CollectionPanel event={event} section="files" />}
+        {active === "files" && <EventFilesWorkspace key={event.id} event={event} />}
     </div>
     {active === "overview" && <section aria-label="Event controls" className="flex flex-col gap-4 border-t border-border-subtle pt-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold text-text-secondary">Event controls</p><p className="mt-1 text-xs text-text-tertiary">Manage this event’s status or remove it.</p></div><div className="flex flex-wrap gap-2">{cancelled ? <button type="button" onClick={() => reopenPlannerEvent(event.id)} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#cfe1d3] bg-white px-3.5 text-xs font-semibold text-brand-primary hover:bg-[#eaf3ed]"><RotateCcw className="size-4" aria-hidden="true" />Reopen event</button> : <button type="button" onClick={() => setCancelling(true)} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#edcaca] bg-white px-3.5 text-xs font-semibold text-[#a34c4c] hover:bg-[#fcf2f2]"><Ban className="size-4" aria-hidden="true" />Cancel event</button>}<button type="button" onClick={() => { setDeleteError(""); setDeleting(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#edcaca] bg-white px-3.5 text-xs font-semibold text-[#a34c4c] hover:bg-[#fcf2f2]"><Trash2 className="size-4" aria-hidden="true" />Delete event</button></div></section>}
     <EventCancellationDialog event={cancelling ? event : null} onClose={() => setCancelling(false)} />

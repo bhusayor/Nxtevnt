@@ -12,7 +12,7 @@ type Action = { label: string; icon?: ReactNode; description?: string; href?: st
 const enabledMenuItems = ':is([role="menuitem"],[role="menuitemradio"]):not(:disabled)';
 
 /** Shared, portalled action menu: never clipped by tables or cards. */
-export function ActionMenu({ label, items, children, triggerContent, triggerClassName, heading, footer }: { label: string; items?: Action[]; children?: ReactNode; triggerContent?: ReactNode; triggerClassName?: string; heading?: string; footer?: ReactNode }) {
+export function ActionMenu({ label, items, children, triggerContent, triggerClassName, contentClassName, heading, footer }: { label: string; items?: Action[]; children?: ReactNode; triggerContent?: ReactNode; triggerClassName?: string; contentClassName?: string; heading?: string; footer?: ReactNode }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -53,7 +53,7 @@ export function ActionMenu({ label, items, children, triggerContent, triggerClas
   }
   return <>
     <button ref={trigger} type="button" aria-label={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen((value) => !value)} onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setOpen(true); } }} className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-background-subtle focus-visible:outline-2 focus-visible:outline-brand-primary", triggerClassName)}>{triggerContent || <MoreHorizontal className="size-5" aria-hidden="true" />}</button>
-    {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={label} onKeyDown={navigate} onClick={(event) => { if (event.target instanceof Element && event.target.closest(enabledMenuItems)) { trigger.current?.focus(); setOpen(false); } }} style={position} className="fixed z-[80] max-h-[calc(100dvh-1rem)] w-60 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-border-subtle bg-white p-1.5 shadow-[var(--shadow-lg)]">
+    {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={label} onKeyDown={navigate} onClick={(event) => { if (event.target instanceof Element && event.target.closest(enabledMenuItems)) { trigger.current?.focus(); setOpen(false); } }} style={position} className={cn("fixed z-[80] max-h-[calc(100dvh-1rem)] w-60 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-border-subtle bg-white p-1.5 shadow-[var(--shadow-lg)]", contentClassName)}>
       {heading && <p className="px-3 pb-1 pt-2 text-[0.625rem] font-semibold uppercase tracking-wider text-text-tertiary">{heading}</p>}
       {items?.map((item) => {
         const content = <>{item.icon && <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4" aria-hidden="true">{item.icon}</span>}<span className="min-w-0 flex-1"><span className="block">{item.label}</span>{item.description && <span className="mt-0.5 block text-[0.6875rem] font-normal leading-4 text-text-tertiary">{item.description}</span>}</span>{item.selected && <Check className="size-4 shrink-0 text-brand-primary" aria-hidden="true" />}</>;

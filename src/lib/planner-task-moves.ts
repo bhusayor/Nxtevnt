@@ -8,6 +8,7 @@ export type TaskDestination = { groupId?: string | null; status?: TaskStatus; re
 
 /** Move existing records, never recreate them: comments and other metadata stay intact. */
 export function moveTaskInPlan(event: PlannerEvent, taskId: string, destination: TaskDestination): PlannerEvent {
+  if (event.cancelledAt) throw new Error("This event is cancelled. Its tasks can’t be moved.");
   const tasks = event.sections.tasks;
   const task = tasks.find((entry) => entry.id === taskId);
   if (!task) throw new Error("This task no longer exists. Refresh the plan and try again.");

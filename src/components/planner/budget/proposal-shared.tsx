@@ -11,9 +11,9 @@ export const hasProposalItems = (proposal: Pick<BudgetProposal, "groups">) => pr
 export type ProposalActions = { onEdit: (proposal: BudgetProposal) => void; onDuplicate: (proposal: BudgetProposal) => void; onDelete: (proposal: BudgetProposal) => void; canCreate: boolean };
 
 export function BudgetDifference({ total, target, currency }: { total: number; target: number | null; currency: string }) {
-  if (target === null) return <span className="text-[0.6875rem] text-text-tertiary">No client target set</span>;
+  if (target === null) return <span className="text-xs text-text-tertiary">No client target set</span>;
   const difference = Math.round((target - total) * 100) / 100;
-  return <span className={cn("text-[0.6875rem] font-medium", difference < 0 ? "text-[#ac7742]" : "text-[#4d7c62]")}>{difference === 0 ? "Matches the client target" : `${formatBudgetMoney(Math.abs(difference), currency)} ${difference > 0 ? "under" : "over"} target`}</span>;
+  return <span className={cn("text-xs font-medium", difference < 0 ? "text-[#ac7742]" : "text-[#4d7c62]")}>{difference === 0 ? "Matches the client target" : `${formatBudgetMoney(Math.abs(difference), currency)} ${difference > 0 ? "under" : "over"} target`}</span>;
 }
 
 export function ProposalMenu({ proposal, actions }: { proposal: BudgetProposal; actions: ProposalActions }) {

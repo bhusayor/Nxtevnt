@@ -1,11 +1,13 @@
-import { assertVerificationReady, hasIdentityProof, normalizeVerificationContact, validVerificationEmail, validVerificationPhone, verificationDocumentFileError, verificationStepErrors, type ContactProof, type DocumentReceipt, type IdentityProof } from "./verification-model";
-import type { ContactChallenge, VerificationService } from "./verification-service";
+import { assertVerificationReady, hasIdentityProof, hasInstagramProof, normalizeInstagramHandle, normalizeVerificationContact, validVerificationEmail, validVerificationPhone, verificationDocumentFileError, verificationStepErrors, type ContactProof, type DocumentReceipt, type IdentityProof, type InstagramProof } from "./verification-model";
+import type { ContactChallenge, InstagramChallenge, VerificationService } from "./verification-service";
 
 /** Local development only. Files and test results never leave memory or issue a public badge. */
 export function createVerificationWalkthrough({ now = Date.now, id = () => crypto.randomUUID() }: { now?: () => number; id?: () => string } = {}): VerificationService {
   const challenges = new Map<string, { challenge: ContactChallenge; attempts: number; used: boolean }>();
   const latest = new Map<string, string>(), contacts = new Map<string, ContactProof>();
   const documents = new Map<string, { receipt: DocumentReceipt; file: File }>(), identities = new Map<string, IdentityProof>();
+  const instagramChallenges = new Map<string, InstagramChallenge>(), instagramResults = new Map<string, InstagramProof>();
+  function ownedInstagram(challenge: InstagramChallenge) { const issued = instagramChallenges.get(challenge.id); if (!issued || issued.handle !== challenge.handle || issued.code !== challenge.code || now() >= Date.parse(issued.expiresAt)) throw new Error("This Instagram code expired or changed. Request a new code."); return issued; }
   const contactKey = (channel: string, target: string) => `${channel}:${target}`;
   function ownsDocument(receipt: DocumentReceipt | undefined, purpose: DocumentReceipt["purpose"]) { return Boolean(receipt && documents.get(receipt.reference)?.receipt.purpose === purpose); }
   return {
@@ -44,9 +46,25 @@ export function createVerificationWalkthrough({ now = Date.now, id = () => crypt
       const proof: IdentityProof = { proofToken: `walkthrough-${id()}`, legalName: draft.legalName.trim(), country: draft.country, documentType: draft.documentType, documentReference: draft.identityDocument!.reference, mode: "walkthrough" };
       identities.set(proof.proofToken, proof); return { ...proof };
     },
+    async requestInstagramCode(value) {
+      const handle = normalizeInstagramHandle(value); if (!handle) throw new Error("Enter your Instagram username or profile link.");
+      for (const [key, item] of instagramChallenges) if (item.handle === handle) { instagramChallenges.delete(key); instagramResults.delete(key); }
+      const challenge: InstagramChallenge = { id: `walkthrough-${id()}`, handle, code: `NX-${id().replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase().padStart(8, "0")}`, expiresAt: new Date(now() + 10 * 60_000).toISOString() };
+      instagramChallenges.set(challenge.id, challenge); return { ...challenge };
+    },
+    async checkInstagram(challenge) {
+      ownedInstagram(challenge); const proof = instagramResults.get(challenge.id); return proof ? { status: "verified", proof: { ...proof } } : { status: "pending" };
+    },
+    async confirmInstagramWalkthrough(challenge) {
+      const issued = ownedInstagram(challenge);
+      const proof: InstagramProof = { handle: issued.handle, proofToken: `walkthrough-${id()}`, verifiedAt: new Date(now()).toISOString(), mode: "walkthrough" };
+      instagramResults.set(challenge.id, proof); return { ...proof };
+    },
     async submit(draft) {
       assertVerificationReady(draft, true);
       for (const proof of [draft.emailProof!, draft.phoneProof!]) { const issued = contacts.get(proof.proofToken); if (!issued || issued.target !== proof.target || issued.channel !== proof.channel) throw new Error("Verify your contact details in this session before continuing."); }
+      const instagram = [...instagramResults.values()].find((proof) => proof.proofToken === draft.instagramProof?.proofToken);
+      if (!instagram || !hasInstagramProof(draft.instagram, instagram)) throw new Error("Complete the Instagram check in this session before continuing.");
       const issued = draft.identityProof && identities.get(draft.identityProof.proofToken);
       if (!issued || !hasIdentityProof({ ...draft, identityProof: issued }) || !ownsDocument(draft.identityDocument, "identity")) throw new Error("Complete the identity check in this session before continuing.");
       if (draft.kind === "registered" && (!ownsDocument(draft.registrationDocument, "registration") || draft.capacity === "representative" && !ownsDocument(draft.authorityDocument, "authority"))) throw new Error("Add the required business documents in this session.");

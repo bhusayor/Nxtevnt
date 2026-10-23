@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { PhosphorIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,13 +18,16 @@ const tones: Record<Tone, { icon: string; track: string; fill: string; footer: s
 type MetricCardProps = {
   label: string;
   value: string | number;
-  detail: string;
+  detail: ReactNode;
   icon: PhosphorIcon;
   tone?: Tone;
   progress?: { value: number; label: string };
   animateCurrency?: boolean;
   compact?: boolean;
   className?: string;
+  readable?: boolean;
+  detailClassName?: string;
+  animate?: boolean;
 };
 
 function countTarget(value: string | number, animateCurrency: boolean) {
@@ -99,19 +102,19 @@ function AnimatedMetricValue({ value, animateCurrency }: { value: string | numbe
   return <><span className="sr-only">{value}</span><span ref={element} aria-hidden="true">{display}</span></>;
 }
 
-export function OverviewMetricCard({ label, value, detail, icon: Icon, tone = "sage", progress, animateCurrency = false, compact, className }: MetricCardProps) {
+export function OverviewMetricCard({ label, value, detail, icon: Icon, tone = "sage", progress, animateCurrency = false, compact, className, readable = false, detailClassName, animate = true }: MetricCardProps) {
   const palette = tones[tone];
   const percent = progress ? Math.max(0, Math.min(100, progress.value)) : 0;
   const content = <>
     <div className="flex items-start justify-between gap-2">
-      <span className="pt-0.5 text-[0.6875rem] font-semibold uppercase leading-4 tracking-[0.08em] text-text-secondary">{label}</span>
+      <span className={cn("pt-0.5 font-semibold text-text-secondary", readable ? "text-sm leading-5" : "text-[0.6875rem] uppercase leading-4 tracking-[0.08em]")}>{label}</span>
       <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", palette.icon)}><Icon className="size-[18px]" weight="bold" aria-hidden="true" /></span>
     </div>
-    <strong className={cn("mt-3 block break-words font-semibold leading-tight tracking-[-0.045em] tabular-nums text-text-primary", compact ? "text-[1.375rem] sm:text-[1.5rem]" : "text-[1.875rem] sm:text-[2.125rem]")}><AnimatedMetricValue value={value} animateCurrency={animateCurrency} /></strong>
+    <strong className={cn("mt-3 block break-words font-semibold leading-tight tracking-[-0.045em] tabular-nums text-text-primary", compact ? "text-[1.375rem] sm:text-[1.5rem]" : "text-[1.875rem] sm:text-[2.125rem]")}>{animate ? <AnimatedMetricValue value={value} animateCurrency={animateCurrency} /> : value}</strong>
     {progress && <div className="mt-3" role="progressbar" aria-label={progress.label} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}><div className={cn("h-1.5 overflow-hidden rounded-full", palette.track)}><span className={cn("metric-card-progress block h-full origin-left rounded-full motion-safe:transition-[width] motion-safe:duration-500", palette.fill)} style={{ width: `${percent}%` }} /></div></div>}
     <div className="mt-auto pt-4">
-      <div className={cn("flex min-h-10 items-center rounded-xl px-3 py-2.5 text-[0.6875rem] font-medium leading-4", palette.footer)}>{detail}</div>
+      <div className={cn("flex min-h-10 items-center rounded-xl px-3 py-2.5 font-medium", readable ? "text-sm leading-5" : "text-[0.6875rem] leading-4", palette.footer, detailClassName)}>{detail}</div>
     </div>
   </>;
-  return <div className={cn("metric-card-enter flex min-w-0 flex-col rounded-2xl border border-border-subtle bg-white p-4 text-left shadow-[0_8px_26px_-23px_rgba(20,45,30,.35)] sm:p-5", className)}>{content}</div>;
+  return <div className={cn("flex min-w-0 flex-col rounded-2xl border border-border-subtle bg-white p-4 text-left shadow-[0_8px_26px_-23px_rgba(20,45,30,.35)] sm:p-5", animate && "metric-card-enter", className)}>{content}</div>;
 }

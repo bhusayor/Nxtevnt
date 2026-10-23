@@ -15,12 +15,13 @@ export const taskColumns: { value: TaskStatus; label: string; tone: string; dot:
   { value: "blocked", label: "Blocked", tone: "text-[#a96629]", dot: "bg-[#dfa460]", surface: "bg-[#fff7ec]" },
 ];
 
-export function TaskKanbanBoard({ tasks, groups, today, controller, onMove, onEdit, onOpen, onCreate }: {
+export function TaskKanbanBoard({ tasks, groups, today, controller, onMove, onEdit, onOpen, onCreate, onMoveMilestone }: {
   tasks: EventItem[];
   groups: EventTaskGroup[];
   today: string;
   controller: TaskPlanDrag;
   onMove: (taskId: string, status: TaskStatus) => void;
+  onMoveMilestone: (task: EventItem) => void;
   onEdit: (task: EventItem) => void;
   onOpen: (task: EventItem, focusComments?: boolean) => void;
   onCreate: (status: TaskStatus) => void;
@@ -46,7 +47,7 @@ export function TaskKanbanBoard({ tasks, groups, today, controller, onMove, onEd
             <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.6875rem] text-text-tertiary"><TaskPriorityBadge priority={task.priority} />{task.assignee && <span className="truncate">{task.assignee}</span>}{task.dueDate && <span className={cn("inline-flex items-center gap-1", overdue && "font-semibold text-[#a96038]")}><CalendarDays className="size-3.5" aria-hidden="true" />{formatEventDate(task.dueDate, { day: "numeric", month: "short" })}</span>}{task.clientVisible && <Eye className="size-3.5 text-[#4a7693]" aria-label="Client-visible" />}</div>
             </div>
             <div className="pointer-events-none relative z-10 mt-3 border-t border-border-subtle pt-3"><button type="button" onClick={() => onOpen(task, true)} aria-label={`View or add comments: ${task.title}`} className="pointer-events-auto flex w-full items-center justify-between gap-2 rounded text-[0.6875rem] text-text-secondary hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-brand-primary"><span className="inline-flex items-center gap-1.5"><MessageSquareText className="size-3.5" aria-hidden="true" />{comments.length} {comments.length === 1 ? "comment" : "comments"}</span><span className="font-semibold text-brand-primary">Comment</span></button><p className="mt-1.5 line-clamp-2 break-words text-[0.625rem] leading-4 text-text-tertiary">{latest ? `${latest.author}: ${latest.body}` : "No comments yet"}</p></div>
-            <div className="relative z-10 mt-3"><Select ariaLabel={`Move ${task.title} to status`} value={column.value} onValueChange={(status) => onMove(task.id, status as TaskStatus)} options={taskColumns.map((entry) => ({ label: entry.label, value: entry.value }))} className="h-9 text-xs" /></div>
+            <div className="relative z-10 mt-3"><Select ariaLabel={`Move ${task.title} to status`} value={column.value} onValueChange={(status) => onMove(task.id, status as TaskStatus)} options={taskColumns.map((entry) => ({ label: entry.label, value: entry.value }))} className="h-9 text-xs" /><button type="button" aria-label={`Move ${task.title} to another milestone`} onClick={() => onMoveMilestone(task)} className="mt-2 min-h-9 text-sm font-semibold text-brand-primary hover:underline">Move to milestone</button></div>
           </article>;
         })}{columnTasks.length === 0 && <p className="rounded-xl border border-dashed border-[#dce5df] bg-white/60 px-3 py-7 text-center text-xs leading-5 text-text-tertiary">No tasks here yet.<br />Drop a card or add one above.</p>}</div>
       </section>;

@@ -5,6 +5,7 @@ import { guestCommunicationsMilestone } from "@/lib/event-setup-templates";
 import type { BudgetProposal } from "@/lib/budget-proposals";
 import type { MoodboardBoard } from "@/lib/planner-moodboards";
 import type { AgendaFields, AgendaSharing } from "@/lib/event-agenda";
+import type { EventFileFolder, EventFileRecord } from "@/lib/event-files";
 
 export type EventItem = {
   id: string;
@@ -129,6 +130,7 @@ export type PlannerEvent = {
   currency?: string;
   timeZone?: string;
   clientId?: string;
+  linkedEventIds?: string[];
   clientName: string;
   guestCount: string;
   budget: string;
@@ -144,6 +146,8 @@ export type PlannerEvent = {
   cancellationReason?: string;
   notes: string;
   noteEntries?: EventNote[];
+  fileFolders?: EventFileFolder[];
+  fileEntries?: EventFileRecord[];
   questionnaires?: SentQuestionnaire[];
   taskGroups?: EventTaskGroup[];
   budgetProposals?: BudgetProposal[];
@@ -273,6 +277,59 @@ export function updatePlannerEvent(id: string, update: (event: PlannerEvent) => 
   const index = events.findIndex((event) => event.id === id);
   if (index < 0) return;
   writeEvents(events.map((event, current) => current === index ? update(event) : event));
+}
+
+export const EVENT_QUESTIONNAIRE_LIMIT = 3;
+
+export function assertPlannerQuestionnaireSlot(eventId: string) {
+  const event = readEvents().find((item) => item.id === eventId);
+  if (!event) throw new Error("This event no longer exists.");
+  if (isEventCancelled(event)) throw new Error("Reopen this event before sending a questionnaire.");
+  if ((event.questionnaires ?? []).length >= EVENT_QUESTIONNAIRE_LIMIT) throw new Error("All three questionnaire slots are filled. Remove a questionnaire before sending another.");
+}
+
+export function sendPlannerQuestionnaire(eventId: string, request: SentQuestionnaire) {
+  let found = false;
+  updatePlannerEvent(eventId, (event) => {
+    found = true;
+    if ((event.questionnaires ?? []).some((item) => item.id === request.id)) return event;
+    if (isEventCancelled(event)) throw new Error("Reopen this event before sending a questionnaire.");
+    if ((event.questionnaires ?? []).length >= EVENT_QUESTIONNAIRE_LIMIT) throw new Error("All three questionnaire slots are filled. Remove a questionnaire before sending another.");
+    return { ...event, questionnaires: [...(event.questionnaires ?? []), request] };
+  });
+  if (!found) throw new Error("This event no longer exists.");
+}
+
+export function completePlannerTask(eventId: string, taskId: string) {
+  let found = false;
+  updatePlannerEvent(eventId, (event) => {
+    found = true;
+    if (isEventCancelled(event)) throw new Error("This event is cancelled. Reopen it before completing tasks.");
+    const task = event.sections.tasks.find((item) => item.id === taskId);
+    if (!task || !isTaskActive(task) || task.status === "archived" || task.status === "canceled") throw new Error("This task is no longer active. Refresh the event and try again.");
+    return { ...event, sections: { ...event.sections, tasks: event.sections.tasks.map((item) => item.id === taskId ? { ...item, status: "completed", done: true } : item) } };
+  });
+  if (!found) throw new Error("This event no longer exists.");
+}
+
+export function linkedPlannerEvents(event: PlannerEvent, events: readonly PlannerEvent[]) {
+  const ids = new Set(Array.isArray(event.linkedEventIds) ? event.linkedEventIds : []);
+  return events.filter((item) => item.id !== event.id && (ids.has(item.id) || (Array.isArray(item.linkedEventIds) && item.linkedEventIds.includes(event.id))));
+}
+
+export function setPlannerEventLinks(eventId: string, linkedIds: string[]) {
+  const events = readEvents();
+  if (!events.some((event) => event.id === eventId)) throw new Error("This event no longer exists.");
+  const ids = new Set(linkedIds);
+  if (ids.has(eventId) || [...ids].some((id) => !events.some((event) => event.id === id))) throw new Error("One of these events is no longer available. Refresh and try again.");
+  // Save both sides together so either event can open the other, without sharing plans.
+  writeEvents(events.map((event) => {
+    if (event.id === eventId) return { ...event, linkedEventIds: [...ids] };
+    const previous = Array.isArray(event.linkedEventIds) ? event.linkedEventIds : [];
+    if (!ids.has(event.id) && !previous.includes(eventId)) return event;
+    const next = previous.filter((id) => id !== eventId);
+    return { ...event, linkedEventIds: ids.has(event.id) ? [...next, eventId] : next };
+  }));
 }
 
 export function isEventCancelled(event: PlannerEvent) {

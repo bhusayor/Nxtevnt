@@ -7,7 +7,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowDown, ArrowUp, Check, Copy, Eye, Pencil, Plus, Send, Trash2, X } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
-import { updatePlannerEvent, type PlannerEvent, type QuestionnaireQuestion, type QuestionnaireQuestionType, type QuestionnaireSection, type SentQuestionnaire } from "@/lib/planner-events";
+import { assertPlannerQuestionnaireSlot, sendPlannerQuestionnaire, type PlannerEvent, type QuestionnaireQuestion, type QuestionnaireQuestionType, type QuestionnaireSection, type SentQuestionnaire } from "@/lib/planner-events";
 import { needsOptions, questionCount, questionTypeGroups, saveQuestionnaireTemplate } from "@/lib/questionnaires";
 import { cn } from "@/lib/utils/cn";
 
@@ -39,7 +39,7 @@ function SectionTitleEditor({ title, number, total, onChange }: { title: string;
         if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
         if (event.key === "Escape") { event.preventDefault(); cancelled.current = true; setEditing(false); }
       }} placeholder="Name this section" className="h-10 min-w-0 flex-1 rounded-lg border border-brand-primary bg-white px-3 text-sm font-semibold outline-none ring-2 ring-brand-primary/10" />
-      <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={save} aria-label={`Save section ${number} title`} className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-white hover:opacity-90"><Check className="size-4" aria-hidden="true" /></button>
+      <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={save} aria-label={`Save section ${number} title`} className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary bg-[image:var(--action-primary-gradient)] hover:bg-[image:var(--action-primary-gradient-hover)] active:bg-[image:var(--action-primary-gradient-active)] text-white hover:opacity-90"><Check className="size-4" aria-hidden="true" /></button>
     </div> : <button type="button" onClick={beginEditing} aria-label={`Edit section ${number} title: ${title}`} className="group mt-1 flex max-w-full items-center gap-2 rounded-md py-1 text-left text-sm font-semibold text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
       <span className="min-w-0 break-words">{title || `Section ${number}`}</span><Pencil className="size-3.5 shrink-0 text-text-tertiary transition-colors group-hover:text-brand-primary" aria-hidden="true" /><span className="shrink-0 text-[0.6875rem] font-medium text-text-tertiary group-hover:text-brand-primary">Edit title</span>
     </button>}
@@ -128,11 +128,12 @@ export function QuestionnaireBuilder(props: BuilderProps) {
     const normalized = sections.map((section) => ({ ...section, title: section.title.trim(), questions: section.questions.map((question) => ({ ...question, label: question.label.trim(), options: question.options?.map((option) => option.trim()).filter(Boolean) })) }));
     const selectedCategory = category === "Other" ? otherCategory.trim() : category;
     try {
+      assertPlannerQuestionnaireSlot(event.id);
       const template = saveTemplate ? saveQuestionnaireTemplate({ title: templateTitle.trim(), category: selectedCategory, sections: structuredClone(normalized) }) : null;
       const request: SentQuestionnaire = { id: crypto.randomUUID(), templateId: template?.id ?? "one-off", title: title.trim(), category: selectedCategory, sections: structuredClone(normalized), answers: {}, status: "pending", sentAt: new Date().toISOString() };
-      updatePlannerEvent(event.id, (current) => ({ ...current, questionnaires: [...(current.questionnaires ?? []), request] }));
+      sendPlannerQuestionnaire(event.id, request);
       setConfirmOpen(false); setError(""); props.onSent(request.id);
-    } catch { setError("This questionnaire couldn’t be saved in this browser. Please try again."); }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "This questionnaire couldn’t be saved in this browser. Please try again."); }
   }
 
   return <div className="space-y-5 rounded-[1.25rem] border border-border-subtle bg-white p-5 sm:p-7"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[0.6875rem] font-bold uppercase tracking-wider text-brand-primary">Build from scratch</p><h4 className="mt-1 text-lg font-semibold tracking-tight">{props.mode === "template" ? "Create a template" : "Create a questionnaire"}</h4><p className="mt-1 text-xs leading-5 text-text-secondary">Organise questions into sections, then preview exactly what the client will see.</p></div><span className="rounded-full bg-[#edf5ef] px-3 py-1.5 text-xs font-semibold text-brand-primary">{sections.length} {sections.length === 1 ? "section" : "sections"} · {questionCount({ sections })} {questionCount({ sections }) === 1 ? "question" : "questions"}</span></div>

@@ -24,9 +24,9 @@ export function WorkspaceSwitcher({ role = "planner" }: { role?: WorkspaceRole }
 
   return (
     <Select.Root value={role} onValueChange={switchWorkspace}>
-      <Select.Trigger aria-label="Switch workspace" className="flex h-10 items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-white px-2.5 text-xs font-semibold text-text-primary transition-colors hover:border-border-default data-[state=open]:bg-surface-selected">
-        <span className={`flex size-6 items-center justify-center rounded-md ${current.tone}`}><Icon className="size-4" weight="bold" aria-hidden="true" /></span>
-        <Select.Value />
+      <Select.Trigger aria-label={`Switch workspace, ${current.title}`} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/90 bg-white/85 px-2 text-xs font-semibold text-text-primary shadow-sm transition-colors hover:bg-white data-[state=open]:bg-surface-selected sm:h-10 sm:gap-2 sm:px-3">
+        <span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${current.tone}`}><Icon className="size-4" weight="bold" aria-hidden="true" /></span>
+        <Select.Value><span className="sr-only sm:not-sr-only">{current.title}</span></Select.Value>
         <Select.Icon><ChevronDown className="size-4 text-text-secondary" weight="bold" aria-hidden="true" /></Select.Icon>
       </Select.Trigger>
       <Select.Portal>

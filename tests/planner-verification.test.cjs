@@ -13,10 +13,10 @@ const base = model.createVerificationDraft(profile), draft = { ...base, document
 assert.equal(base.legalName, 'Amaka Okafor'); assert.equal(base.email, profile.email); assert.equal(base.emailProof, undefined);
 assert(model.validVerificationPhone('+234 801 234 5678')); assert(!model.validVerificationPhone('08012345678'));
 for (let step = 0; step < 4; step++) assert.deepEqual(model.verificationStepErrors(draft, step), {});
-assert.equal(model.pendingVerificationChecks(draft).length, 4); assert.throws(() => model.assertVerificationReady(draft), /verify your email/);
+assert.equal(model.pendingVerificationChecks(draft).length, 5); assert.throws(() => model.assertVerificationReady(draft), /verify your email/);
 const emailProof = { channel: 'email', target: 'planner@example.test', proofToken: 'server-email-result', verifiedAt: at };
 const phoneProof = { channel: 'phone', target: '+2348000000000', proofToken: 'server-phone-result', verifiedAt: at };
-const ready = { ...draft, emailProof, phoneProof, identityDocument: { purpose: 'identity', reference: 'secure-file-ref', name: 'identity.pdf' }, identityProof: { proofToken: 'server-identity-result', legalName: draft.legalName, country: 'Nigeria', documentType: 'nin' } };
+const ready = { ...draft, instagram: '@example.events', instagramProof: { handle: 'example.events', proofToken: 'server-instagram-result', verifiedAt: at }, emailProof, phoneProof, identityDocument: { purpose: 'identity', reference: 'secure-file-ref', name: 'identity.pdf' }, identityProof: { proofToken: 'server-identity-result', legalName: draft.legalName, country: 'Nigeria', documentType: 'nin' } };
 assert.equal(model.pendingVerificationChecks(ready).length, 0); model.assertVerificationReady(ready);
 assert(!model.hasContactProof('email', 'changed@example.test', emailProof)); assert(!model.hasContactProof('phone', draft.phone, emailProof));
 assert(!model.hasIdentityProof({ ...ready, legalName: 'Changed Name' })); assert(!model.hasIdentityProof({ ...ready, documentType: 'passport' }));
@@ -25,7 +25,7 @@ assert(model.pendingVerificationChecks(registered).some(item => item.key === 'au
 assert(!model.pendingVerificationChecks({ ...registered, kind: 'independent' }).some(item => item.step === 2));
 assert(model.verificationStepErrors({ ...registered, registrationCountry: 'invalid' }, 2).registrationCountry);
 const checkpoint = model.verificationCheckpoint(ready, 3, at), safe = model.sanitizeVerificationCheckpoint({ ...checkpoint, ...ready, status: 'approved', history: [{ action: 'approved' }], bvn: 'private-bvn', document: 'data:image/private' });
-for (const key of ['email', 'phone', 'legalName', 'identityDocument', 'identityProof', 'emailProof', 'phoneProof', 'registrationNumber', 'bvn', 'document', 'status', 'history']) assert(!Object.hasOwn(safe, key), `${key} never enters persisted progress`);
+for (const key of ['email', 'phone', 'instagram', 'instagramProof', 'legalName', 'identityDocument', 'identityProof', 'emailProof', 'phoneProof', 'registrationNumber', 'bvn', 'document', 'status', 'history']) assert(!Object.hasOwn(safe, key), `${key} never enters persisted progress`);
 const legacy = model.sanitizeVerificationCheckpoint({ mode: 'preview', kind: 'registered', documentType: 'passport', status: 'approved', sampleId: true, sampleSelfie: true, history: [{ action: 'approved' }] });
 assert.equal(legacy.kind, 'registered'); assert.equal(legacy.mode, 'workflow'); assert.equal(legacy.status, undefined); assert.equal(legacy.sampleId, undefined);
 store.saveVerificationCheckpoint(checkpoint, ready); assert.equal(store.readVerificationCheckpoint().step, 3); assert.equal(store.readVerificationMemoryDraft().accurate, false);
@@ -84,10 +84,11 @@ async function run() {
   delayedForm().find(node => text(node) === 'Request code' && node.props.onClick).props.onClick(); target = 'changed@example.test'; delayedForm(); resolveRequest(await provider.requestCode('email', draft.email)); await flush();
   assert.equal(staleProof, undefined); assert(!delayedForm().some(node => node.props['aria-label'] === 'Email verification code'));
   const { VerificationFlow } = require('../src/components/planner/verification/verification-workspace.tsx');
+  const { VerificationDashboard } = require('../src/components/planner/verification/verification-dashboard.tsx');
   store.saveVerificationCheckpoint(initial, draft); states = []; cursor = 0;
   const draw = () => { cursor = 0; return walk(VerificationFlow({ checkpoint: store.readVerificationCheckpoint() })); };
-  draw().find(node => node.type === VerificationRoadmap).props.onGo(1); assert(draw().some(node => node.type === VerificationIdentityFields), 'Document examples remain accessible while contact checks are pending');
-  draw().find(node => node.type === VerificationRoadmap).props.onGo(3);
+  draw().find(node => node.type === VerificationDashboard).props.onBusiness(); assert(draw().some(node => node.type === VerificationIdentityFields), 'Document examples remain accessible while contact checks are pending');
+  draw().find(node => node.type === 'button' && /Review$/.test(text(node))).props.onClick();
   assert(draw().some(node => node.props.type === 'submit' && node.props.disabled));
   assert(!draw().some(node => /sample|preview|demo|prototype/i.test(text(node))));
   draw().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await flush(); assert(draw().some(node => node.props.role === 'alert'));

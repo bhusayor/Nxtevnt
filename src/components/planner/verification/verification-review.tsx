@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CreditCard, LockSimple } from "@/components/ui/icons";
 import { Checkbox } from "@/components/ui/checkbox";
-import { hasContactProof, hasIdentityProof, identityDocumentOptions, pendingVerificationChecks, verificationStepErrors } from "@/lib/verification-model";
+import { hasContactProof, hasIdentityProof, hasInstagramProof, normalizeInstagramHandle, identityDocumentOptions, pendingVerificationChecks, verificationStepErrors } from "@/lib/verification-model";
 import type { PlannerProfile } from "@/lib/planner-profile-types";
 import type { VerificationFieldProps } from "./verification-fields";
 
@@ -15,6 +15,7 @@ export function VerificationReviewFields({ draft, errors, update, profile, onEdi
   const pending = pendingVerificationChecks(draft);
   const groups = [
     { title: "Contact", step: 0, rows: [["Email", draft.email], ["Email check", hasContactProof("email", draft.email, draft.emailProof) ? "Verified" : "Not yet verified"], ["Phone", draft.phone], ["Phone check", hasContactProof("phone", draft.phone, draft.phoneProof) ? "Verified" : "Not yet verified"]] },
+    { title: "Instagram account", step: 4, rows: [["Business account", normalizeInstagramHandle(draft.instagram) ? `@${normalizeInstagramHandle(draft.instagram)}` : "Not added"], ["Ownership check", hasInstagramProof(draft.instagram, draft.instagramProof) ? draft.instagramProof?.mode === "walkthrough" ? "Complete in test mode" : "Confirmed" : "Not yet confirmed"]] },
     { title: "Identity", step: 1, rows: [["Legal name", draft.legalName], ["Country", draft.country], ["Document", identityDocumentOptions.find((option) => option.value === draft.documentType)?.label || "Not selected"], ["Upload", draft.identityDocument?.name || "Not uploaded"], ["Identity check", hasIdentityProof(draft) ? "Complete" : "Not yet complete"]] },
     { title: "Business", step: 2, rows: [["Working as", draft.kind === "registered" ? "Registered business" : draft.kind === "independent" ? "Independent planner" : "Not selected"], ["Brand", draft.brand], ["Location", draft.location], ...(draft.kind === "registered" ? [["Registered name", draft.registeredName], ["Registration country", draft.registrationCountry], ["Registration number", draft.registrationNumber], ["Applying as", draft.capacity === "owner" ? "Owner / director" : "Authorised representative"], ["Registration document", draft.registrationDocument?.name || "Not uploaded"], ...(draft.capacity === "representative" ? [["Authorisation", draft.authorityDocument?.name || "Not uploaded"]] : [])] : [["Company paperwork", "Not required for independent planners"]])] },
   ];

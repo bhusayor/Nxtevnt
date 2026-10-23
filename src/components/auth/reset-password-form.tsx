@@ -25,7 +25,7 @@ export function ResetPasswordForm() {
 
   if (complete) return <div className="space-y-7">
     <AuthFormHeader title="You’re all set" description="Your password reset flow is complete. Continue to sign in." />
-    <Link href="/login" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-primary px-4 text-sm font-semibold text-white hover:opacity-90">Continue to sign in<ArrowRight className="size-4" aria-hidden="true" /></Link>
+    <Link href="/login" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-primary bg-[image:var(--action-primary-gradient)] hover:bg-[image:var(--action-primary-gradient-hover)] active:bg-[image:var(--action-primary-gradient-active)] px-4 text-sm font-semibold text-white hover:opacity-90">Continue to sign in<ArrowRight className="size-4" aria-hidden="true" /></Link>
   </div>;
 
   return <div className="space-y-7">

@@ -56,6 +56,7 @@ export { FileXlsIcon as FileSpreadsheet } from "@phosphor-icons/react/dist/ssr/F
 export { FilesIcon as FileStack } from "@phosphor-icons/react/dist/ssr/Files";
 export { FileTextIcon as FileText } from "@phosphor-icons/react/dist/ssr/FileText";
 export { FunnelIcon as Filter } from "@phosphor-icons/react/dist/ssr/Funnel";
+export { SignpostIcon as Milestone } from "@phosphor-icons/react/dist/ssr/Signpost";
 export { FolderIcon as Folder } from "@phosphor-icons/react/dist/ssr/Folder";
 export { FolderOpenIcon as FolderOpen } from "@phosphor-icons/react/dist/ssr/FolderOpen";
 export { FolderPlusIcon as FolderPlus } from "@phosphor-icons/react/dist/ssr/FolderPlus";

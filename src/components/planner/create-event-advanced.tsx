@@ -175,7 +175,7 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border-subtle px-5 py-5 sm:px-7">
             <div>
               <Dialog.Title className="text-lg font-semibold tracking-tight">{sampleKind === "budget" ? "Find your starting budget" : "Choose your planning rhythm"}</Dialog.Title>
-              <Dialog.Description className="mt-1 text-xs leading-5 text-text-secondary">{sampleKind === "budget" ? "Explore sample costs before choosing a template." : "Preview the milestones, tasks and dates that will shape your plan."}</Dialog.Description>
+              <Dialog.Description className="mt-1 text-xs leading-5 text-text-secondary">{sampleKind === "budget" ? "Explore costs before choosing a template." : "Preview the milestones, tasks and dates that will shape your plan."}</Dialog.Description>
             </div>
             <Dialog.Close asChild><button type="button" aria-label="Close samples" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#f5f6f5] text-text-secondary hover:bg-[#eaf0eb] focus-visible:outline-2 focus-visible:outline-brand-primary"><X className="size-4" /></button></Dialog.Close>
           </div>
@@ -211,7 +211,7 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
   function renderBudgetSample() {
     return <div>
               <div className="rounded-xl bg-[#f2f7f3] p-5">
-                <p className="text-xs text-text-secondary">Sample estimate · {sampleBudget.baselineGuests} guests</p>
+                <p className="text-xs text-text-secondary">Starting estimate · {sampleBudget.baselineGuests} guests</p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-brand-primary">{formatNaira(sampleTotal)}</p>
                 <p className="mt-2 text-xs leading-5 text-text-secondary">{sampleBudget.description}</p>
               </div>
@@ -219,7 +219,7 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
               <ul className="mt-2 divide-y divide-border-subtle">
                 {sampleRows.map((item) => <li key={item.name} className="flex items-center justify-between gap-4 py-3.5 text-xs"><div className="min-w-0"><p className="font-medium text-text-primary">{item.name}</p><p className="mt-1 text-[0.6875rem] text-text-tertiary">{item.perGuest ? "Adjusts with guest count" : "Fixed starting cost"}</p></div><span className="shrink-0 font-semibold tabular-nums">{formatNaira(item.amount)}</span></li>)}
               </ul>
-              <p className="mt-4 text-xs leading-5 text-text-tertiary">These sample estimates are a starting point. Update them as vendor quotes come in.</p>
+              <p className="mt-4 text-xs leading-5 text-text-tertiary">These estimates are a starting point. Update them as vendor quotes come in.</p>
             </div>;
   }
 }

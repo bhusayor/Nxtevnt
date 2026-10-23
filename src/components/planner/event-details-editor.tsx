@@ -8,7 +8,8 @@ import { CoverPicker } from "@/components/planner/cover-picker";
 import { EventTimeZonePicker } from "@/components/planner/event-date-time-fields";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { currencies } from "@/lib/planner-budget";
+import { currencies, repriceBudgetGuestItems, useBudgetStore } from "@/lib/planner-budget";
+import { perGuestItemCount, repriceProposalGuestItems } from "@/lib/event-guest-pricing";
 import { addPlannerClient, usePlannerClients } from "@/lib/planner-clients";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -32,6 +33,8 @@ function eventDetails(event: PlannerEvent): NewPlannerEvent {
 export function EventDetailsEditor({ event, className }: { event: PlannerEvent; className?: string }) {
   const teamMembers = usePlannerTeam();
   const clients = usePlannerClients();
+  const budget = useBudgetStore();
+  const affectedGuestItems = perGuestItemCount(event, budget.items);
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<NewPlannerEvent>(() => eventDetails(event));
   const [otherType, setOtherType] = useState(knownTypes.includes(event.type) ? "" : event.type);
@@ -39,6 +42,7 @@ export function EventDetailsEditor({ event, className }: { event: PlannerEvent; 
   const [creatingClient, setCreatingClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
+  const [confirmGuestPricing, setConfirmGuestPricing] = useState(false);
 
   function setField<K extends keyof NewPlannerEvent>(field: K, value: NewPlannerEvent[K]) {
     setDetails((current) => ({ ...current, [field]: value }));
@@ -51,11 +55,22 @@ export function EventDetailsEditor({ event, className }: { event: PlannerEvent; 
     if (creatingClient) { setError("Save the new client or cancel before saving this event."); return; }
     if ((details.type === "Other event" || !knownTypes.includes(details.type)) && !otherType.trim()) { setError("Enter the event type."); return; }
     if (details.startTime && details.endTime && details.endTime <= details.startTime) { setError("The end time should be later than the start time."); return; }
+    if (details.guestCount && (!Number.isSafeInteger(Number(details.guestCount)) || Number(details.guestCount) < 0 || Number(details.guestCount) > 100000)) { setError("Enter a whole-number guest count between 0 and 100,000."); return; }
+    if (Number(details.guestCount) !== Number(event.guestCount) && affectedGuestItems > 0) { setConfirmGuestPricing(true); return; }
+    commit(false);
+  }
+
+  function commit(reprice: boolean) {
+    let rollback: (() => void) | undefined;
     try {
-      updatePlannerEvent(event.id, (current) => ({ ...current, ...details, name: details.name.trim(), type: details.type === "Other event" || !knownTypes.includes(details.type) ? otherType.trim() : details.type, location: details.location.trim(), clientName: details.clientName.trim(), description: details.description.trim() }));
+      if (reprice) rollback = repriceBudgetGuestItems(event.id, Number(details.guestCount));
+      let found = false;
+      updatePlannerEvent(event.id, (current) => { found = true; const next = { ...current, ...details, name: details.name.trim(), type: details.type === "Other event" || !knownTypes.includes(details.type) ? otherType.trim() : details.type, location: details.location.trim(), clientName: details.clientName.trim(), description: details.description.trim() }; return reprice ? repriceProposalGuestItems(next, Number(details.guestCount)) : next; });
+      if (!found) throw new Error("This event no longer exists.");
+      setConfirmGuestPricing(false);
       setOpen(false);
       setError("");
-    } catch { setError("These changes couldn’t be saved in this browser. Please try again."); }
+    } catch (failure) { try { rollback?.(); } catch { setError("The guest-count update could not be completed. Check the event and budget before trying again."); return; } setError(failure instanceof Error ? failure.message : "These changes couldn’t be saved in this browser. Please try again."); }
   }
 
   return <Dialog.Root open={open} onOpenChange={(next) => { if (next) { setDetails(eventDetails(event)); setOtherType(knownTypes.includes(event.type) ? "" : event.type); setCreatingClient(false); setError(""); } setOpen(next); }}>
@@ -81,5 +96,6 @@ export function EventDetailsEditor({ event, className }: { event: PlannerEvent; 
         <div className="flex flex-col-reverse gap-2 border-t border-border-subtle pt-5 sm:flex-row sm:justify-end"><Dialog.Close asChild><Button type="button" variant="ghost">Cancel</Button></Dialog.Close><Button type="submit">Save changes</Button></div>
       </form>
     </Dialog.Content></Dialog.Portal>
+    <Dialog.Root open={confirmGuestPricing} onOpenChange={setConfirmGuestPricing}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-[60] bg-[#10231a]/55 backdrop-blur-[2px]" /><Dialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-[var(--shadow-lg)]"><Dialog.Title className="text-lg font-semibold">Update per-guest costs?</Dialog.Title><Dialog.Description className="mt-3 text-sm leading-6 text-text-secondary">{affectedGuestItems} items are priced per guest. Update their budgeted amounts?</Dialog.Description><p className="mt-3 text-sm leading-6 text-text-secondary">Guest count: {event.guestCount || "not set"} → {details.guestCount || "not set"}. Budgeted amounts and proposal estimates update. Invoiced amounts and recorded payments never change.</p>{error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}<div className="mt-5 flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setConfirmGuestPricing(false)}>Back</Button><Button type="button" variant="outline" onClick={() => commit(false)}>Keep current amounts</Button><Button type="button" disabled={Number(details.guestCount) <= 0} onClick={() => commit(true)}>Update amounts</Button></div></Dialog.Content></Dialog.Portal></Dialog.Root>
   </Dialog.Root>;
 }

@@ -9,6 +9,7 @@ export const verificationSteps = [
 export type DocumentType = "" | "nin" | "national-id" | "passport" | "drivers-license";
 export type ContactChannel = "email" | "phone";
 export type ContactProof = { channel: ContactChannel; target: string; proofToken: string; verifiedAt: string; mode?: "walkthrough" };
+export type InstagramProof = { handle: string; proofToken: string; verifiedAt: string; mode?: "walkthrough" };
 export type DocumentReceipt = { reference: string; name: string; purpose: "identity" | "registration" | "authority"; previewUrl?: string; mode?: "walkthrough" };
 export type IdentityProof = { proofToken: string; legalName: string; country: string; documentType: DocumentType; documentReference?: string; mode?: "walkthrough" };
 export type VerificationStatus = "submitted" | "under-review" | "needs-info" | "approved" | "declined";
@@ -17,6 +18,7 @@ export type VerificationApplication = { id: string; status: VerificationStatus; 
 export type VerificationCheckpoint = { mode: "workflow"; step: number; kind: "" | "independent" | "registered"; documentType: DocumentType; country: string; registrationCountry: string; updatedAt?: string };
 export type VerificationDraft = {
   email: string; phone: string; emailProof?: ContactProof; phoneProof?: ContactProof;
+  instagram: string; instagramProof?: InstagramProof;
   legalName: string; country: string; documentType: DocumentType; identityDocument?: DocumentReceipt; identityProof?: IdentityProof;
   kind: VerificationCheckpoint["kind"]; brand: string; location: string; registeredName: string; registrationNumber: string; registrationCountry: string;
   capacity: "owner" | "representative"; registrationDocument?: DocumentReceipt; authorityDocument?: DocumentReceipt; accurate: boolean;
@@ -30,8 +32,20 @@ export function validVerificationPhone(value: string) { return /^\+[1-9]\d{7,14}
 export function validVerificationEmail(value: string) { return value.length <= 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()); }
 export function hasContactProof(channel: ContactChannel, target: string, proof?: ContactProof) { return Boolean(proof && proof.channel === channel && proof.target === normalizeVerificationContact(channel, target) && proof.proofToken && Number.isFinite(Date.parse(proof.verifiedAt))); }
 export function hasIdentityProof(draft: VerificationDraft) { const proof = draft.identityProof; return Boolean(proof?.proofToken && proof.legalName === draft.legalName.trim() && proof.documentType === draft.documentType && proof.country === draft.country && (!proof.documentReference || proof.documentReference === draft.identityDocument?.reference)); }
+export function normalizeInstagramHandle(value = "") {
+  let handle = value.trim();
+  if (/^(https?:\/\/|www\.)/i.test(handle)) {
+    try { const url = new URL(handle.startsWith("www.") ? `https://${handle}` : handle); if (!["instagram.com", "www.instagram.com"].includes(url.hostname.toLowerCase()) || url.protocol !== "https:" || url.username || url.password) return ""; const parts = url.pathname.split("/").filter(Boolean); if (parts.length !== 1) return ""; handle = parts[0]; } catch { return ""; }
+  }
+  handle = handle.replace(/^@/, "").toLowerCase();
+  return /^[a-z0-9_](?:[a-z0-9_.]{0,28}[a-z0-9_])?$/.test(handle) && !handle.includes("..") && !["accounts", "explore", "direct", "reel", "reels", "p", "stories"].includes(handle) ? handle : "";
+}
+export function hasInstagramProof(value: string, proof?: InstagramProof) { const handle = normalizeInstagramHandle(value); return Boolean(handle && proof?.handle === handle && proof.proofToken && Number.isFinite(Date.parse(proof.verifiedAt))); }
+export function businessVerificationReady(draft: VerificationDraft) {
+  return !Object.keys(verificationStepErrors(draft, 1)).length && !Object.keys(verificationStepErrors(draft, 2)).length && !pendingVerificationChecks(draft).some((item) => item.step === 1 || item.step === 2);
+}
 export function createVerificationDraft(profile?: PlannerProfile, checkpoint = emptyVerificationCheckpoint): VerificationDraft {
-  return { email: profile?.email || "", phone: profile?.phone || "", legalName: "Amaka Okafor", country: checkpoint.country, documentType: checkpoint.documentType, kind: checkpoint.kind, brand: profile?.brand || "", location: profile?.location || "", registeredName: "", registrationNumber: "", registrationCountry: checkpoint.registrationCountry, capacity: "owner", accurate: false };
+  return { email: profile?.email || "", phone: profile?.phone || "", instagram: profile?.instagram || "", legalName: "Amaka Okafor", country: checkpoint.country, documentType: checkpoint.documentType, kind: checkpoint.kind, brand: profile?.brand || "", location: profile?.location || "", registeredName: "", registrationNumber: "", registrationCountry: checkpoint.registrationCountry, capacity: "owner", accurate: false };
 }
 export type VerificationErrors = Partial<Record<keyof VerificationDraft, string>>;
 /** Prepare details while checks are pending; submission separately requires verified evidence. */
@@ -61,6 +75,7 @@ export function pendingVerificationChecks(draft: VerificationDraft) {
   const pending: { key: string; label: string; step: number }[] = [];
   if (!hasContactProof("email", draft.email, draft.emailProof)) pending.push({ key: "email", label: "Verify your email address", step: 0 });
   if (!hasContactProof("phone", draft.phone, draft.phoneProof)) pending.push({ key: "phone", label: "Verify your phone number", step: 0 });
+  if (!hasInstagramProof(draft.instagram, draft.instagramProof)) pending.push({ key: "instagram", label: "Confirm your Instagram account", step: 4 });
   if (!draft.identityDocument?.reference || draft.identityDocument.purpose !== "identity") pending.push({ key: "identityDocument", label: "Upload your identity document", step: 1 });
   if (!hasIdentityProof(draft)) pending.push({ key: "identityProof", label: "Complete your identity check", step: 1 });
   if (draft.kind === "registered") {
@@ -73,7 +88,7 @@ export function firstIncompleteVerificationStep(draft: VerificationDraft) { retu
 export function assertVerificationReady(draft: VerificationDraft, allowWalkthrough = false) {
   for (const step of [0, 1, 2, 3]) if (Object.keys(verificationStepErrors(draft, step)).length) throw new Error(`Complete ${verificationSteps[step].title.toLowerCase()} before submitting.`);
   const pending = pendingVerificationChecks(draft); if (pending.length) throw new Error(`Before submitting: ${pending[0].label.toLowerCase()}.`);
-  if (!allowWalkthrough && [draft.emailProof, draft.phoneProof, draft.identityProof, draft.identityDocument, draft.registrationDocument, draft.authorityDocument].some((entry) => entry?.mode === "walkthrough")) throw new Error("Test results cannot be used for a live verification application.");
+  if (!allowWalkthrough && [draft.emailProof, draft.phoneProof, draft.instagramProof, draft.identityProof, draft.identityDocument, draft.registrationDocument, draft.authorityDocument].some((entry) => entry?.mode === "walkthrough")) throw new Error("Test results cannot be used for a live verification application.");
 }
 export function verificationDocumentFileError(file: { size: number; type: string; name: string }) {
   if (!file.size) return "This file is empty. Choose another file.";

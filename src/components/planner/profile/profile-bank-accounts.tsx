@@ -51,7 +51,7 @@ export function BankAccountDialog({ currency: initialCurrency, update }: { curre
     if (!eligible || !open) return;
     // Prototype only. Replace with a server-side bank/BVN verification provider.
     // This response deliberately cannot be mistaken for a verified account owner.
-    const timer = window.setTimeout(() => setAccountName("DEMO ACCOUNT HOLDER"), 900);
+    const timer = window.setTimeout(() => setAccountName("TEST ACCOUNT HOLDER"), 900);
     return () => window.clearTimeout(timer);
   }, [eligible, bank, number, bvn, currency, open]);
 

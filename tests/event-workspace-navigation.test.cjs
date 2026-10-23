@@ -1,0 +1,21 @@
+// Navigation-only checks. No browser records or guest data are accessed.
+const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), Module = require('node:module');
+const root = path.resolve(__dirname, '..'), ts = require('typescript');
+const file = path.join(root, 'src/lib/event-workspace-navigation.ts');
+const mod = new Module(file);
+mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: 1, target: 9 } }).outputText, file);
+const { workspaceSection, budgetWorkspaceTab } = mod.exports;
+const sections = ['overview', 'notes', 'proposal', 'tasks', 'moodboard', 'agenda', 'control-room', 'files'];
+for (const section of sections) assert.equal(workspaceSection(section), section);
+for (const section of ['guests', 'guest', undefined, 'unknown']) assert.equal(workspaceSection(section), 'overview');
+assert.equal(workspaceSection('decisions'), 'notes');
+assert.equal(workspaceSection('budget'), 'proposal');
+assert.equal(workspaceSection('budget-proposal'), 'proposal');
+assert.equal(budgetWorkspaceTab('budget'), 'budget');
+assert.equal(budgetWorkspaceTab('proposal'), 'proposals');
+const source = fs.readFileSync(path.join(root, 'src/components/planner/event-workspace.tsx'), 'utf8');
+const tabConfig = source.match(/const sections = \[([\s\S]*?)\] as const/)[1];
+assert.deepEqual([...tabConfig.matchAll(/id: "([^"]+)"/g)].map(match => match[1]), sections);
+assert(!source.includes('EventGuestSummary'));
+assert(!source.includes('active === "guests"'));
+console.log('PASS: Guest placeholder hidden; old guest links fall back to overview; all other tabs and budget/decision aliases preserved. Read-only checks.');

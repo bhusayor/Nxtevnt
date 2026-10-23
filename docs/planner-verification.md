@@ -1,6 +1,16 @@
 # Planner verification
 
-The planner has a four-step application flow: Contact → Identity → Business → Review. User-facing language describes the actual actions, not a simulated verification exercise. The initial account-holder name is Amaka Okafor, as requested for the current UI; it is not proof of identity. Saved business-profile contact details can prefill the form.
+The verification home has four independent check cards: Business verification, Phone/WhatsApp, Business email and Instagram account. The summary shows application readiness (0–4 checks prepared) separately from approval. Business verification opens a focused Identity → Business → Review flow; phone and email codes can be requested directly on their cards. Review includes all four checks and links back to missing information without losing current fields. The initial account-holder name is Amaka Okafor, as requested for the current UI; it is not proof of identity. Saved business-profile contact details and the Instagram account can prefill the form, but never prefill a verified result.
+
+Registered businesses need their registration document (for example, a CAC certificate) plus individual identification (for example, a NIN slip). Independent planners retain the identity-only route and cannot receive a business-registration badge just by selecting it. Pending, ready for review, needs-info/declined and approved labels come from the evidence/application state; a fresh application is never labelled failed. Public badges and boosted-listing eligibility follow actual approval, not the readiness percentage.
+
+## Instagram ownership
+
+Instagram accepts a username or Instagram profile URL and binds each challenge and proof to the normalized account. The code flow explains copying a code, sending it from that account and checking confirmation. Generating/copying a code or checking a pending result never proves ownership. Account changes invalidate the result; stale responses and expired/replaced challenges are rejected. Instagram proofs and handles stay outside the saved-checkpoint allowlist.
+
+The official receiving account is intentionally unconfigured, per the user’s request. The live service returns an honest unavailable error and no destination is invented. A configured provider may return a recipient profile URL; only a valid Instagram account URL is displayed. There is no automatic message, external request, password collection, public-profile update or badge issuance. The development walkthrough exposes a clearly labelled “Complete test confirmation” action to exercise the remaining UI without claiming real ownership. Its results are session-bound and rejected by the live readiness guard.
+
+Run `node tests/verification-dashboard.test.cjs` for overview, route, Instagram and privacy coverage using synthetic fixtures only.
 
 ## Document examples
 
@@ -12,7 +22,7 @@ NIN guidance: https://nimc.gov.ng/nin/. The slip example highlights the photogra
 
 ### Local development walkthrough
 
-The user-requested walkthrough is enabled only when `NODE_ENV === "development"`. It is labelled “Test mode · Nothing is sent”. Request code opens a 6-digit input and accepts `123456`, with a 15-second resend cooldown, 10-minute expiry, attempt limit and contact-bound single-use challenges. No email or SMS is sent.
+The user-requested walkthrough is enabled only when `NODE_ENV === "development"`. It is labelled “Test mode · Nothing is sent”. Request code opens a 6-digit input and accepts `123456`, with a 15-second resend cooldown, 10-minute expiry, attempt limit and contact-bound single-use challenges. No email, SMS or WhatsApp message is sent. The Phone/WhatsApp check confirms the business phone number; it is not a WhatsApp account integration.
 
 PDF/JPG/PNG uploads up to 5 MB are retained in memory only. Image previews use temporary blob URLs; removing or replacing a document revokes its URL. The on-page identity dialog goes through document review, face-photo capture/upload, a test checking state, and a result. “Take photo” requests the front camera (no audio) only after a user click and browser permission. A mirrored preview supports capture, review and retake; the saved JPEG uses the camera’s original orientation. Uploading a JPG/PNG remains available without camera permission. Camera tracks stop on capture, cancel, Back, leaving the step, or dialog unmount; late permission results are stopped and ignored. HTTPS or localhost is required, with clear permission, device and playback errors. No biometric matching occurs. Captured/uploaded face photos remain in memory, and their preview URLs are revoked when replaced or when the dialog closes. “Done” applies the test result; cancelling does not complete the application’s identity check.
 

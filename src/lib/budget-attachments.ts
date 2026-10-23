@@ -23,6 +23,11 @@ export function validateBudgetAttachment(file: File) {
   return "";
 }
 
+export function validateBudgetReceipt(file: File) {
+  if (!/\.(pdf|png|jpe?g|webp)$/i.test(file.name) || !["application/pdf", "image/png", "image/jpeg", "image/webp"].includes(file.type)) return "Use a PDF, JPG, PNG or WebP receipt.";
+  return validateBudgetAttachment(file);
+}
+
 export async function saveBudgetAttachments(files: { attachment: BudgetAttachment; file: File }[]) {
   if (!files.length) return;
   const db = await database();

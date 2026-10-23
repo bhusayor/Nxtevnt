@@ -8,9 +8,9 @@ export type PaymentStatus = "unpaid" | "upcoming" | "partially-paid" | "paid" | 
 // Retain the two legacy values when reading older budgets and spreadsheets.
 export type BudgetStatus = PaymentStatus | "not-started" | "quoted";
 export type VendorStatus = "not-sourced" | "sourcing" | "booked";
-export type BudgetPayment = { id: string; amount: number; date: string; method: "bank-transfer" | "cash" | "card" | "other"; reference: string; note: string; createdAt: string };
+export type BudgetPayment = { id: string; amount: number; date: string; method: "bank-transfer" | "cash" | "card" | "other"; reference: string; note: string; createdAt: string; receipt?: BudgetAttachment };
 export type BudgetInstallment = { id: string; percentage: number; dueDate: string };
-export type BudgetAttachment = { id: string; name: string; type: string; size: number };
+export type BudgetAttachment = { id: string; name: string; type: string; size: number; category?: "document" | "invoice" };
 export type BudgetGroup = { id: string; name: string; eventId: string | null; currency: string; createdAt: string };
 export type BudgetItem = {
   id: string;
@@ -51,9 +51,8 @@ export const currencies = [
 
 export const budgetStatuses: { value: PaymentStatus; label: string }[] = [
   { value: "unpaid", label: "Unpaid" },
-  { value: "upcoming", label: "Upcoming" }, { value: "partially-paid", label: "Partially paid" },
+  { value: "upcoming", label: "Payment due" }, { value: "partially-paid", label: "Partially paid" },
   { value: "paid", label: "Paid" }, { value: "overdue", label: "Overdue" },
-  { value: "cancelled", label: "Cancelled" },
 ];
 export const vendorStatuses: { value: VendorStatus; label: string }[] = [
   { value: "not-sourced", label: "Not sourced" }, { value: "sourcing", label: "Sourcing" }, { value: "booked", label: "Booked" },
@@ -121,6 +120,22 @@ export function upsertBudgetItem(item: BudgetItem) {
   writeStore({ ...current, items: current.items.some((entry) => entry.id === item.id) ? current.items.map((entry) => entry.id === item.id ? item : entry) : [...current.items, item] });
 }
 
+/** Reprice estimates only. Invoice, paid balance, receipts and schedules are untouched. */
+export function repriceBudgetGuestItems(eventId: string, guestCount: number) {
+  if (!Number.isSafeInteger(guestCount) || guestCount <= 0) throw new Error("Set a whole-number guest count above zero before updating per-guest amounts.");
+  const before = readStore();
+  const items = before.items.map((item) => {
+    if (item.eventId !== eventId || item.pricedAs !== "per-guest" || item.status === "cancelled") return item;
+    const unitPrice = item.unitPrice ?? (item.quantity && item.quantity > 0 ? item.budgeted / item.quantity : NaN);
+    const budgeted = Math.round(unitPrice * guestCount * 100) / 100;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0 || !Number.isSafeInteger(Math.round(budgeted * 100))) throw new Error(`Check the per-guest price for ${item.name} before updating the guest count.`);
+    return { ...item, quantity: guestCount, unitPrice, budgeted };
+  });
+  if (items.every((item, index) => item === before.items[index])) return () => {};
+  writeStore({ ...before, items });
+  return () => writeStore(before);
+}
+
 function updateCurrentBudgetItem(item: BudgetItem, update: (current: BudgetItem) => BudgetItem) {
   const store = readStore();
   const saved = store.items.find((entry) => entry.id === item.id);
@@ -144,6 +159,7 @@ export function recordBudgetPayment(item: BudgetItem, payment: BudgetPayment) {
     const date = new Date(`${payment.date}T12:00:00Z`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(payment.date) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== payment.date || payment.date > budgetToday()) throw new Error("Choose a valid payment date today or earlier.");
     if (!["bank-transfer", "cash", "card", "other"].includes(payment.method) || payment.reference.length > 120 || payment.note.length > 500) throw new Error("Check the payment method, reference and note before saving.");
+    if (payment.receipt && (!payment.receipt.id || !payment.receipt.name || payment.receipt.name.length > 255 || !["application/pdf", "image/png", "image/jpeg", "image/webp"].includes(payment.receipt.type) || payment.receipt.size <= 0 || payment.receipt.size > 15 * 1024 * 1024)) throw new Error("Choose a PDF or image receipt up to 15 MB.");
     const next = { ...current, paid: Math.round((current.paid + payment.amount) * 100) / 100, payments: [...(current.payments ?? []), { ...payment, reference: payment.reference.trim(), note: payment.note.trim() }] };
     return { ...next, status: paymentStatus(next) };
   });
@@ -210,8 +226,9 @@ export function paymentStatus(item: Pick<BudgetItem, "budgeted" | "invoiced" | "
   const scheduled = installmentPayments(item).filter((entry) => entry.due > 0.005);
   const dueDates = scheduled.length ? scheduled.map((entry) => entry.dueDate) : item.installments.length ? [] : item.paymentDate ? [item.paymentDate] : [];
   if (balance > 0.005 && dueDates.some((date) => date < today)) return "overdue";
+  const nextWeek = new Date(`${today}T12:00:00Z`); nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
+  if (balance > 0.005 && dueDates.some((date) => date >= today && date <= nextWeek.toISOString().slice(0, 10))) return "upcoming";
   if (item.paid > 0) return "partially-paid";
-  if (balance > 0.005 && dueDates.some((date) => date >= today)) return "upcoming";
   return "unpaid";
 }
 

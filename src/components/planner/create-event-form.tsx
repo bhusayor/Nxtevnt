@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, Credit
 import { CoverPicker } from "@/components/planner/cover-picker";
 import { AdvancedSection, CreateEventAdvanced } from "@/components/planner/create-event-advanced";
 import { EventDatePicker, EventTimePicker, EventTimeZonePicker } from "@/components/planner/event-date-time-fields";
+import { EventTypePicker } from "@/components/planner/event-type-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -20,13 +21,6 @@ import { addPlannerClient, usePlannerClients } from "@/lib/planner-clients";
 import { budgetTemplates, estimateBudget, milestoneDueDate } from "@/lib/event-setup-templates";
 import { useMilestoneTemplates } from "@/lib/planner-task-templates";
 import { createPlannerEvent, eventCovers, formatEventDate, isCustomCover, useBrowserReady, type NewPlannerEvent } from "@/lib/planner-events";
-
-const eventTypes = [
-  { label: "Wedding", value: "Wedding" },
-  { label: "Corporate", value: "Corporate" },
-  { label: "Party", value: "Party" },
-  { label: "Other", value: "Other event" },
-];
 
 const initial: NewPlannerEvent = {
   name: "", type: "", date: "", startTime: "", endTime: "", location: "", city: "", currency: "NGN", timeZone: "Africa/Lagos", clientId: "",
@@ -168,11 +162,9 @@ export function CreateEventForm() {
                 <div><h2 className="text-xl font-semibold tracking-tight">The essentials</h2><p className="mt-1.5 text-sm leading-6 text-text-secondary">Just enough to create a home for your event.</p></div>
                 <AdvancedSection title="Event information" description="The name, type, date and place your plan will grow around." icon={CalendarDays}>
                   <Input id="event-name" label="Event name" placeholder="e.g. Ada & Tunde’s wedding" autoComplete="off" required value={values.name} onChange={(event) => setField("name", event.target.value)} error={errors.name} />
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <Select id="event-type" label="Event type" placeholder="Choose a type" required options={eventTypes} value={values.type} onValueChange={(value) => { setField("type", value); if (!isCustomCover(values.image)) setField("image", value === "Wedding" ? eventCovers[1].src : value === "Corporate" ? eventCovers[2].src : value === "Party" ? eventCovers[3].src : eventCovers[0].src); }} error={errors.type} />
-                    <EventDatePicker id="event-date" value={values.date} onChange={(date) => setField("date", date)} error={errors.date} />
-                  </div>
+                  <EventTypePicker value={values.type} onChange={(value) => { setField("type", value); if (!isCustomCover(values.image)) setField("image", value === "Wedding" ? eventCovers[1].src : value === "Corporate" ? eventCovers[2].src : value === "Party" ? eventCovers[3].src : eventCovers[0].src); }} error={errors.type} />
                   {values.type === "Other event" && <Input id="event-otherType" label="What kind of event?" placeholder="e.g. Product launch" required value={otherType} onChange={(event) => { setOtherType(event.target.value); if (errors.otherType) setErrors((current) => ({ ...current, otherType: undefined })); }} error={errors.otherType} />}
+                  <EventDatePicker id="event-date" value={values.date} onChange={(date) => setField("date", date)} error={errors.date} />
                   <div className="grid gap-5 sm:grid-cols-2">
                     <Input id="event-city" label="City" placeholder="e.g. Lagos" required value={values.city || ""} onChange={(event) => setField("city", event.target.value)} error={errors.city} />
                     <Select id="event-currency" label="Event currency" required options={currencies.map((currency) => ({ label: currency.label, value: currency.code }))} value={values.currency || "NGN"} onValueChange={(value) => { setField("currency", value); if (value !== "NGN") setField("budgetTemplateId", ""); }} />

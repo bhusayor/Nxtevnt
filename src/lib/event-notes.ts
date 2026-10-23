@@ -1,5 +1,14 @@
 import type { EventItem, EventNote, PlannerEvent } from "./planner-events";
 
+export type NoteFilter = "all" | "pinned" | "team" | "nimi";
+export function noteIsFromNimi(note: EventNote) {
+  return note.authorId?.trim().toLocaleLowerCase() === "nimi" || (!note.authorId && note.author.trim().toLocaleLowerCase() === "nimi");
+}
+export function filterEventNotes(notes: EventNote[], filter: NoteFilter, search = "") {
+  const term = search.trim().toLocaleLowerCase();
+  return notes.filter((note) => (filter === "all" || filter === "pinned" && note.pinned || filter === "team" && !noteIsFromNimi(note) || filter === "nimi" && noteIsFromNimi(note)) && (!term || `${note.title || ""} ${note.body} ${note.author} ${noteDateLabel(note.createdAt)} ${noteDate(note.createdAt)}`.toLocaleLowerCase().includes(term)));
+}
+
 const zone = "Africa/Lagos";
 export function noteDay(iso: string) {
   const date = new Date(iso);

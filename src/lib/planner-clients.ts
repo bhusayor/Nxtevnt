@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { usePlannerEvents } from "@/lib/planner-events";
 
-export type PlannerClient = { id: string; name: string; email?: string; createdAt: string };
+export type PlannerClient = { id: string; name: string; email?: string; phone?: string; createdAt: string };
 
 const storageKey = "nxtevnt.planner.clients.v1";
 const changedEvent = "nxtevnt:planner-clients-changed";
@@ -20,7 +20,7 @@ function parseClients(raw: string): PlannerClient[] {
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((entry): entry is PlannerClient =>
       entry !== null && typeof entry === "object" && typeof entry.id === "string" && typeof entry.name === "string" && typeof entry.createdAt === "string",
-    ) : [];
+    ).map((entry) => ({ ...entry, email: typeof entry.email === "string" ? entry.email : "", phone: typeof entry.phone === "string" ? entry.phone : "" })) : [];
   } catch { return []; }
 }
 
@@ -59,4 +59,17 @@ export function addPlannerClient(name: string, email = "") {
   window.localStorage.setItem(storageKey, JSON.stringify([...existing, client]));
   window.dispatchEvent(new Event(changedEvent));
   return client;
+}
+
+export function updatePlannerClientContact(client: PlannerClient, contact: { email: string; phone: string }) {
+  const email = contact.email.trim();
+  const phone = contact.phone.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
+  if (phone && (!/^[+\d\s().-]+$/.test(phone) || phone.replace(/\D/g, "").length < 7 || phone.replace(/\D/g, "").length > 15)) throw new Error("Enter a phone number with 7 to 15 digits, including the country code.");
+  const clients = parseClients(getRaw());
+  const current = clients.find((entry) => entry.id === client.id);
+  const updated = { ...(current || client), email, phone };
+  window.localStorage.setItem(storageKey, JSON.stringify(current ? clients.map((entry) => entry.id === client.id ? updated : entry) : [...clients, updated]));
+  window.dispatchEvent(new Event(changedEvent));
+  return updated;
 }

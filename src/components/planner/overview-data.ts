@@ -12,6 +12,11 @@ export type DashboardEvent = {
   progress: number;
   next: string;
   nextTaskId?: string;
+  nextTaskDueDate?: string;
+  nextTaskOverdue?: boolean;
+  dateISO?: string;
+  weatherCity?: string;
+  timeZone?: string;
   tasksComplete?: boolean;
   image: string;
   alt: string;

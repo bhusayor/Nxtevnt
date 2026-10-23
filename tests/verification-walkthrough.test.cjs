@@ -29,6 +29,10 @@ async function run() {
   await assert.rejects(() => service.confirmCode(locked, '123456'), /new code/);
   now += 10 * 60000; await assert.rejects(() => service.confirmCode(replacement, '123456'), /expired/);
   const draft = { ...model.createVerificationDraft(), email: 'planner@example.test', phone: '+2348000000000', emailProof, phoneProof, documentType: 'nin', kind: 'independent', brand: 'Test Events', location: 'Lagos', accurate: true };
+  draft.instagram = '@example.events';
+  const instagram = await service.requestInstagramCode(draft.instagram);
+  assert.equal((await service.checkInstagram(instagram)).status, 'pending', 'Requesting a code does not prove ownership');
+  draft.instagramProof = await service.confirmInstagramWalkthrough(instagram);
   await assert.rejects(() => service.completeIdentityCheck(draft), /Upload/);
   await assert.rejects(() => service.uploadDocument('identity', { name: 'bad.exe', size: 100, type: 'image/png' }), /PDF, JPG or PNG/);
   await assert.rejects(() => service.uploadDocument('identity', { name: 'large.png', size: 6 * 1024 * 1024, type: 'image/png' }), /5 MB/);

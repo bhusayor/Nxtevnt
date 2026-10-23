@@ -3,6 +3,7 @@
   --brand-primary: #254e3f;
   --brand-primary-hover: #1f4437;
   --brand-primary-active: #19392f;
+  --credit-gold: #a4671c;
   --brand-secondary: #f3e8db;
   --brand-secondary-hover: #eadccb;
   --brand-secondary-active: #e2d0bb;
@@ -62,6 +63,9 @@
   --action-primary: var(--brand-primary);
   --action-primary-hover: var(--brand-primary-hover);
   --action-primary-active: var(--brand-primary-active);
+  --action-primary-gradient: linear-gradient(110deg, #547c70 0%, #1f493e 100%);
+  --action-primary-gradient-hover: linear-gradient(110deg, #486f63 0%, #193e34 100%);
+  --action-primary-gradient-active: linear-gradient(110deg, #385c50 0%, #15362d 100%);
   --action-secondary: var(--brand-secondary);
   --action-secondary-hover: var(--brand-secondary-hover);
   --action-secondary-active: var(--brand-secondary-active);
