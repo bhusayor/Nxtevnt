@@ -56,7 +56,9 @@ try {
   render(EventLinkedEvents, { event: getEvents()[0] }).find(n => n.type === stubs.Button && n.props.children === 'Save links').props.onClick();
   assert.deepEqual(getEvents()[0].linkedEventIds, ['b']);
   reset(); nodes = render(AttentionQuickAction, { item: { id: 'task-1', title: 'Confirm flowers', eventId: 'a', task: getEvents()[0].sections.tasks[0] } });
-  nodes.find(n => n.type === 'input').props.onChange();
+  assert.equal(nodes.length, 0, 'Attention task rows have no completion quick action');
+  assert.equal(getEvents()[0].sections.tasks[0].status, 'blocked', 'Reading attention tasks does not change them');
+  events.completePlannerTask('a', 'task-1');
   assert.equal(getEvents()[0].sections.tasks[0].status, 'completed'); assert.equal(getEvents()[0].sections.tasks[0].done, true); assert.equal(getEvents()[0].sections.tasks[0].detail, 'Keep detail');
   const taskSnapshot = storage.get(eventKey);
   fail = true; assert.throws(() => events.completePlannerTask('a', 'task-1'), /Storage full/); fail = false; assert.equal(storage.get(eventKey), taskSnapshot);

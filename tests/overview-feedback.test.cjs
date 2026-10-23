@@ -51,8 +51,24 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 const reply = (id, eventId, status = 'unread') => ({ id, eventId, status, vendor: 'Synthetic vendor', subject: `Reply ${id}`, message: 'A fixture response.', createdAt: new Date().toISOString() });
 replies = [reply('one', 'a'), reply('two', 'b'), reply('cancelled', 'cancelled'), reply('old', 'a', 'read')];
 async function run() {
-  assert.equal(draw().filter(node => node.props.role === 'tab').length, 4); assert.equal(draw().filter(node => node.type === AttentionActionRow).length, 4);
+  assert.equal(draw().filter(node => node.props.role === 'tab').length, 4); assert.equal(draw().filter(node => node.type === AttentionActionRow).length, 8, 'All tasks are available inside the card');
+  const panel = draw().find(node => node.props.role === 'tabpanel');
+  assert(panel.props.className.includes('overflow-y-auto')); assert(panel.props.className.includes('overscroll-contain')); assert.equal(panel.props.tabIndex, 0, 'List can be scrolled with the keyboard');
+  assert(draw().find(node => node.type === 'section').props.className.includes('h-[680px]'), 'Card stays bounded instead of growing with the full list');
+  assert(draw().find(node => node.type === 'section').props.className.includes('min-h-0'), 'Grid content cannot force the card taller than its height');
+  assert(!/Showing 4|next four/.test(text(draw())));
+  for (const node of draw().filter(node => node.type === AttentionActionRow)) {
+    const html = renderToStaticMarkup(React.createElement(AttentionActionRow, node.props));
+    assert(html.includes('View task')); assert(!html.includes('type="checkbox"')); assert(!html.includes('Mark complete:')); assert(!/>Complete</.test(html));
+  }
   draw().find(node => node.props['aria-label'] === 'See all upcoming tasks').props.onClick(); assert.equal(draw().find(node => node.type === AttentionListDialog).props.items.length, 8); draw().find(node => node.type === AttentionListDialog).props.onClose();
+  const allTasks = draw().find(node => node.type === AttentionListDialog);
+  const dialogRows = walk(AttentionListDialog({ ...allTasks.props, open: true })).filter(node => node.type === AttentionActionRow);
+  assert.equal(dialogRows.length, 8);
+  for (const node of dialogRows) {
+    const html = renderToStaticMarkup(React.createElement(AttentionActionRow, node.props));
+    assert(!html.includes('type="checkbox"')); assert(!/>Complete</.test(html)); assert(html.includes('View task'));
+  }
   draw().find(node => node.props.ariaLabel === 'Filter attention by event').props.onValueChange('a'); assert.equal(draw().find(node => node.type === AttentionListDialog).props.items.length, 6);
   for (const tab of ['payments', 'inquiries', 'vendors', 'tasks']) { draw().find(node => node.props.id === `attention-${tab}`).props.onClick(); assert(draw().some(node => node.type === 'button' && /^See all /.test(node.props['aria-label'] || ''))); }
   draw().find(node => node.props.id === 'attention-vendors').props.onClick(); const vendorRows = draw().filter(node => node.type === AttentionActionRow); assert.equal(vendorRows.length, 1); assert.equal(vendorRows[0].props.item.id, 'one'); vendorRows[0].props.onOpen(vendorRows[0].props.item); draw().find(node => node.type === VendorReplyDialog).props.onRead(); assert.deepEqual(readIds, ['one']);
