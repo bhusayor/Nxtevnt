@@ -1,0 +1,106 @@
+// Actual client/event stores backed by memory only; no real contacts, events or credits.
+const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), Module = require('node:module'), ts = require('typescript'), React = require('react');
+const root = path.resolve(__dirname, '..'), original = Module._load, stubs = {}, storage = new Map();
+let slots = [], cursor = 0, clientsForHook = [], failClientWrite = false, spent = 0, destination;
+const clientKey = 'nxtevnt.planner.clients.v1', eventKey = 'nxtevnt.planner.events.v1';
+const stub = name => stubs[name] ||= () => null;
+Module._load = function(id, parent, main) {
+  if (id === 'next/link' || id === 'next/image') return stub(id);
+  if (id === 'next/navigation') return { useRouter: () => ({ push: url => destination = url }) };
+  if (id === '@radix-ui/react-dialog') return new Proxy({}, { get: (_, name) => stub('Dialog.' + String(name)) });
+  if (id === '@/components/ui/icons') return new Proxy({}, { get: (_, name) => stub('Icon.' + String(name)) });
+  if (id === '@/lib/planner-credits') return { getCreditBalance: () => 1, useCreditBalance: () => 1, spendCreditForEvent() { spent++; return { id: 'credit' }; }, refundCreditUse() { spent--; } };
+  if (id === '@/lib/planner-events') return { ...original.call(this, path.join(root, 'src/lib/planner-events.ts'), parent, main), useBrowserReady: () => true, usePlannerEvents: () => [] };
+  if (id === '@/lib/planner-clients') return { ...original.call(this, path.join(root, 'src/lib/planner-clients.ts'), parent, main), usePlannerClients: () => clientsForHook };
+  if (id === '@/lib/planner-budget') return { currencies: [{ label: 'NGN', code: 'NGN' }], useBudgetStore: () => ({ items: [] }) };
+  if (id === '@/lib/event-guest-pricing') return { perGuestItemCount: () => 0 };
+  if (id === '@/lib/planner-task-templates') return { useMilestoneTemplates: () => [] };
+  if (id === '@/lib/planner-team') return { usePlannerTeam: () => [] };
+  if (id.startsWith('@/components/')) return new Proxy({}, { get: (_, name) => name === '__esModule' ? true : stub(name) });
+  if (id.startsWith('@/')) id = path.join(root, 'src', id.slice(2));
+  return original.call(this, id, parent, main);
+};
+for (const ext of ['.ts', '.tsx']) Module._extensions[ext] = (mod, file) => mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: 1, target: 9, jsx: 4, esModuleInterop: true } }).outputText, file);
+global.window = { localStorage: { getItem: key => storage.get(key) ?? null, setItem(key, value) { if (failClientWrite && key === clientKey) throw Error('Client storage unavailable'); storage.set(key, value); } }, dispatchEvent() {}, setTimeout: callback => callback(), scrollTo() {} };
+global.document = { getElementById: () => ({ focus() {} }) };
+React.useState = initial => { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], value => slots[i] = typeof value === 'function' ? value(slots[i]) : value]; };
+React.useEffect = () => {};
+const { CreateEventForm } = require('../src/components/planner/create-event-form.tsx');
+const { EventDetailsEditor } = require('../src/components/planner/event-details-editor.tsx');
+const walk = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(walk)];
+const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : [node.props?.children].flat(Infinity).map(text).join(' ').trim();
+let component = CreateEventForm, props;
+function draw() { cursor = 0; return walk(component(props)); }
+function field(label) { const node = draw().find(node => node.props.label === label); assert(node, label); return node; }
+const picker = () => draw().find(node => node.type === stubs.Select && node.props.label === 'Client or host');
+function button(label) { const node = draw().find(node => node.type === stubs.Button && text(node) === label); assert(node, label); return node; }
+const input = (label, value) => field(label).props.onChange({ target: { value } });
+const submit = () => draw().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+const existingClient = { id: 'existing-client', name: 'Existing client', email: '', phone: '', createdAt: '2026-01-01' };
+storage.set(clientKey, JSON.stringify([existingClient])); clientsForHook = [existingClient];
+input('Event name', 'Client association fixture');
+draw().find(node => node.type === stubs.EventTypePicker).props.onChange('Wedding');
+input('City', 'Lagos');
+draw().find(node => node.type === stubs.EventDatePicker).props.onChange('2099-12-31');
+button('Advanced details').props.onClick();
+picker().props.onValueChange(existingClient.id);
+picker().props.onValueChange('new');
+input('Client name', '  Ada   Fixture  '); input('Email', 'invalid');
+button('Save client').props.onClick();
+assert.equal(picker().props.value, 'new');
+assert(draw().some(node => node.props.role === 'alert' && text(node).includes('valid email')));
+assert.equal(JSON.parse(storage.get(clientKey)).length, 1);
+input('Email', 'ada@example.com'); failClientWrite = true;
+button('Save client').props.onClick();
+assert.equal(picker().props.value, 'new'); assert.equal(field('Client name').props.value, '  Ada   Fixture  ');
+assert(draw().some(node => node.props.role === 'alert' && text(node).includes('Client storage unavailable')));
+assert.equal(spent, 0); assert.equal(storage.get(eventKey), undefined);
+failClientWrite = false; button('Save client').props.onClick();
+const createdClient = JSON.parse(storage.get(clientKey)).find(client => client.id !== existingClient.id);
+assert.equal(createdClient.name, 'Ada Fixture');
+assert.equal(picker().props.value, createdClient.id);
+assert(picker().props.options.some(option => option.value === createdClient.id && option.label === createdClient.name), 'Selected option exists even before client hook catches up');
+assert(draw().some(node => node.props.label === 'Client or host' && node.props.value === 'Ada Fixture'), 'Live preview reflects the new client');
+assert(!draw().some(node => node.props.label === 'Client name'));
+picker().props.onValueChange(''); picker().props.onValueChange('unregistered-client');
+assert.equal(picker().props.value, createdClient.id, 'Transient/unknown Select callbacks cannot clear a saved selection');
+clientsForHook = JSON.parse(storage.get(clientKey));
+assert.equal(picker().props.options.filter(option => option.value === createdClient.id).length, 1);
+button('Back').props.onClick(); button('Advanced details').props.onClick();
+assert.equal(picker().props.value, createdClient.id, 'Selection survives switching steps');
+submit();
+const event = JSON.parse(storage.get(eventKey))[0];
+assert.equal(event.clientId, createdClient.id); assert.equal(event.clientName, createdClient.name);
+assert.equal(event.name, 'Client association fixture'); assert.equal(spent, 1);
+assert.equal(destination, '/planner/events/' + event.id);
+
+// The edit form shares the same client creation pattern and must keep the association too.
+slots = []; component = EventDetailsEditor; props = { event };
+picker().props.onValueChange('new'); input('Client name', 'Edit fixture client');
+button('Save client').props.onClick();
+const editClient = JSON.parse(storage.get(clientKey)).find(client => client.name === 'Edit fixture client');
+assert.equal(picker().props.value, editClient.id);
+assert(picker().props.options.some(option => option.value === editClient.id));
+picker().props.onValueChange('');
+assert.equal(picker().props.value, editClient.id);
+submit();
+assert.equal(JSON.parse(storage.get(eventKey))[0].clientId, editClient.id);
+assert.equal(JSON.parse(storage.get(eventKey))[0].clientName, editClient.name);
+assert.equal(spent, 1, 'Editing never spends an event credit');
+
+// Duplicate names reuse the stored identity; Cancel retains it and only None clears it.
+picker().props.onValueChange('new'); input('Client name', '  ADA fixture ');
+button('Save client').props.onClick();
+assert.equal(picker().props.value, createdClient.id);
+assert.equal(JSON.parse(storage.get(clientKey)).length, 3);
+picker().props.onValueChange('new');
+draw().filter(node => node.type === stubs.Button && text(node) === 'Cancel')[0].props.onClick();
+assert.equal(picker().props.value, createdClient.id);
+picker().props.onValueChange('none');
+assert.equal(picker().props.value, 'none');
+submit();
+assert.equal(JSON.parse(storage.get(eventKey))[0].clientId, '');
+assert.equal(JSON.parse(storage.get(eventKey))[0].clientName, '');
+assert.deepEqual(JSON.parse(storage.get(clientKey))[0], existingClient);
+Module._load = original;
+console.log('PASS: save/select/persist new client, delayed options, transient Select changes, preview/step parity, edit association, duplicate reuse, explicit clearing and validation/storage failure retention. Memory stores only.');

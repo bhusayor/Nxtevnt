@@ -10,7 +10,7 @@ export type BudgetStatus = PaymentStatus | "not-started" | "quoted";
 export type VendorStatus = "not-sourced" | "sourcing" | "booked";
 export type BudgetPayment = { id: string; amount: number; date: string; method: "bank-transfer" | "cash" | "card" | "other"; reference: string; note: string; createdAt: string; receipt?: BudgetAttachment };
 export type BudgetInstallment = { id: string; percentage: number; dueDate: string };
-export type BudgetAttachment = { id: string; name: string; type: string; size: number; category?: "document" | "invoice" };
+export type BudgetAttachment = { id: string; name: string; type: string; size: number; category?: "document" | "invoice"; sourceUrl?: string };
 export type BudgetGroup = { id: string; name: string; eventId: string | null; currency: string; createdAt: string };
 export type BudgetItem = {
   id: string;
@@ -108,6 +108,10 @@ function writeStore(store: BudgetStore) {
 
 export function useBudgetStore() {
   return useSyncExternalStore(subscribe, readStore, () => empty);
+}
+
+export function budgetItemsForEvent(eventId: string) {
+  return readStore().items.filter((item) => item.eventId === eventId);
 }
 
 export function addBudgetGroups(groups: BudgetGroup[]) {

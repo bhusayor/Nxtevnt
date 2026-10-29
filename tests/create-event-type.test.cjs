@@ -3,13 +3,14 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 const root = path.resolve(__dirname, '..'), ts = require('typescript'), React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const load = Module._load, components = {}, states = [];
-let cursor = 0, saved, spent = 0, navigated;
+let cursor = 0, saved, spent = 0, navigated, balance = 1, spentCost = [], effects = [];
+const draftStorage = new Map();
 const stub = name => components[name] ||= Object.assign(() => null, { displayName: name });
 Module._load = function(id, parent, main) {
   if (id === 'next/link' || id === 'next/image') return stub(id);
   if (id === 'next/navigation') return { useRouter: () => ({ push: url => { navigated = url; } }) };
   if (id === '@/components/ui/icons') return new Proxy({}, { get: (_, name) => ({ ...props }) => React.createElement('svg', { ...props, 'data-icon': String(name) }) });
-  if (id === '@/lib/planner-credits') return { getCreditBalance: () => 1, useCreditBalance: () => 1, spendCreditForEvent: () => { spent++; return { id: 'fixture-credit' }; }, refundCreditUse: () => assert.fail('Unexpected refund') };
+  if (id === '@/lib/planner-credits') return { getCreditBalance: () => balance, useCreditBalance: () => balance, spendCreditForEvent: (_id, _name, count) => { spent++; spentCost.push(count); return { id: 'fixture-credit' }; }, refundCreditUse: () => assert.fail('Unexpected refund') };
   if (id === '@/lib/planner-events') return { useBrowserReady: () => true, eventCovers: [0, 1, 2, 3].map(n => ({ src: `cover-${n}` })), isCustomCover: src => src.startsWith('data:'), formatEventDate: date => date, createPlannerEvent: values => { saved = values; return { id: 'fixture-event' }; } };
   if (id === '@/lib/planner-clients') return { usePlannerClients: () => [] };
   if (id === '@/lib/planner-task-templates') return { useMilestoneTemplates: () => [] };
@@ -39,20 +40,22 @@ for (const choice of ['', 'Wedding', 'Corporate', 'Party', 'Other event']) {
 }
 const errorHtml = renderToStaticMarkup(EventTypePicker({ value: '', onChange() {}, error: 'Choose an event type.' }));
 assert(errorHtml.includes('aria-invalid="true"')); assert(errorHtml.includes('id="event-type-error"'));
-const originalUseState = React.useState;
+const originalUseState = React.useState, originalUseEffect = React.useEffect;
 React.useState = initial => {
   const index = cursor++;
   if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial;
   return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }];
 };
-global.window = { setTimeout: callback => callback(), scrollTo() {} };
+React.useEffect = callback => { effects.push(callback); };
+global.window = { setTimeout: callback => callback(), scrollTo() {}, sessionStorage: { getItem: key => draftStorage.get(key) ?? null, setItem: (key, value) => draftStorage.set(key, value), removeItem: key => draftStorage.delete(key) } };
 global.document = { getElementById: () => ({ focus() {} }) };
-const render = () => { cursor = 0; return walk(CreateEventForm()); };
+const render = () => { cursor = 0; effects = []; return walk(CreateEventForm()); };
 const field = id => render().find(n => n.props?.id === id);
 const picker = () => render().find(n => n.type === EventTypePicker);
 const submit = () => render().find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
 try {
   assert(!field('event-otherType'));
+  assert(!field('event-location')); assert(!field('event-guests'), 'Optional venue/guests stay out of essentials');
   assert(!render().some(n => n.type === components.Select && n.props.id === 'event-type'));
   picker().props.onChange('Other event');
   assert(field('event-otherType').props.required);
@@ -70,7 +73,35 @@ try {
   field('event-name').props.onChange({ target: { value: 'Fixture launch' } });
   field('event-city').props.onChange({ target: { value: 'Lagos' } });
   field('event-date').props.onChange('2099-12-31');
-  submit(); assert.equal(states[0], 2); assert.equal(spent, 0);
+  render().find(n => n.type === components.Button && n.props.children === 'Advanced details').props.onClick(); assert.equal(states[0], 2); assert.equal(spent, 0);
+  assert(field('event-location').props.optional); assert(field('event-guests').props.optional);
+  field('event-location').props.onChange({ target: { value: 'Fixture hall' } });
+  field('event-guests').props.onChange({ target: { value: '250' } });
+  render().find(n => n.type === components.Button && n.props.children === 'Back').props.onClick();
+  assert(!field('event-location')); assert(!field('event-guests'));
+  render().find(n => n.type === components.Button && n.props.children === 'Advanced details').props.onClick();
+  assert.equal(field('event-location').props.value, 'Fixture hall'); assert.equal(field('event-guests').props.value, '250', 'Advanced details survive step switching');
   submit(); assert.equal(saved.type, 'Product launch'); assert.equal(spent, 1); assert.equal(navigated, '/planner/events/fixture-event');
-} finally { React.useState = originalUseState; Module._load = load; }
+  assert.equal(saved.location, 'Fixture hall'); assert.equal(saved.guestCount, '250');
+  assert.equal(saved.tier, 'standard'); assert.equal(spentCost[0], 1);
+  states.length = 0; balance = 2; saved = undefined;
+  field('event-name').props.onChange({ target: { value: 'Premium fixture' } });
+  picker().props.onChange('Wedding');
+  field('event-city').props.onChange({ target: { value: 'Lagos' } });
+  field('event-date').props.onChange('2099-12-31');
+  const premiumSwitch = render().find(n => n.props?.role === 'switch' && n.props['aria-label'] === 'Make a premium event');
+  assert.equal(premiumSwitch.props['aria-checked'], false); premiumSwitch.props.onClick();
+  assert.equal(render().find(n => n.props?.role === 'switch').props['aria-checked'], true);
+  assert(render().some(n => n.type === components.Button && n.props.children === 'Create event · 2 credits'));
+  balance = 1; assert(render().some(n => n.props?.role === 'alert'), 'One credit is insufficient for premium');
+  assert.equal(render().find(n => n.type === components.Button && n.props.children === 'Create event · 2 credits').props.disabled, true);
+  assert.equal(field('event-name').props.value, 'Premium fixture', 'Changing the available balance keeps the form');
+  render(); effects[0](); render(); effects[1]();
+  assert.equal(JSON.parse(draftStorage.get('nxtevnt.planner.create-event-draft.v1')).values.tier, 'premium');
+  states.length = 0; render(); effects[0]();
+  assert.equal(field('event-name').props.value, 'Premium fixture', 'The form restores after visiting credits');
+  assert.equal(render().find(n => n.props?.role === 'switch').props['aria-checked'], true);
+  balance = 2; submit(); assert.equal(saved.tier, 'premium'); assert.equal(spentCost[1], 2); assert.equal(spent, 2);
+  assert.equal(draftStorage.size, 0, 'Creating the event clears the saved form');
+} finally { React.useState = originalUseState; React.useEffect = originalUseEffect; Module._load = load; }
 console.log('PASS: four coloured icon cards, native radio selection, required custom Other, validation, live preview, cover preservation and isolated creation fixture.');

@@ -11,6 +11,7 @@ export type ComparisonRow = { key: string; name: string; cells: (ComparisonCell 
 export type ComparisonItemRow = { key: string; name: string; cells: ProposalLine[][]; different: boolean };
 
 export const proposalLimit = 3;
+export const proposalLimitForEvent = (event: Pick<PlannerEvent, "tier">) => event.tier === "premium" ? proposalLimit : 1;
 export const categoryKey = (value: string) => value.normalize("NFKC").trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 export const lineTotal = (line: ProposalLine) => Math.round((itemPricing(line) === "flat-fee" ? 1 : line.quantity) * line.unitPrice * 100) / 100;
 export const groupTotal = (group: ProposalGroup) => group.items.reduce((sum, line) => sum + Math.round(lineTotal(line) * 100), 0) / 100;
@@ -53,7 +54,7 @@ export function saveEventProposal(event: PlannerEvent, proposal: BudgetProposal,
   const proposals = eventProposals(event);
   const existing = proposals.find((entry) => entry.id === proposal.id);
   if (expectedUpdatedAt && (!existing || existing.updatedAt !== expectedUpdatedAt)) throw new Error("This proposal changed while you were editing. Close and reopen it to get the latest version.");
-  if (!existing && proposals.length >= proposalLimit) throw new Error("You can create up to three proposals per event. Edit or delete an existing proposal first.");
+  if (!existing && proposals.length >= proposalLimitForEvent(event)) throw new Error(event.tier === "premium" ? "You can create up to three proposals per event. Edit or delete an existing proposal first." : "Standard events include one proposal. Upgrade this event to Premium for up to three proposals.");
   if (proposals.some((entry) => entry.id !== proposal.id && categoryKey(entry.name) === categoryKey(proposal.name))) throw new Error("A proposal already has this name. Give this option a different name.");
   validateProposal(proposal);
   const next = { ...proposal, name: proposal.name.trim(), description: proposal.description.trim(), createdAt: existing?.createdAt ?? proposal.createdAt, updatedAt: new Date().toISOString() };

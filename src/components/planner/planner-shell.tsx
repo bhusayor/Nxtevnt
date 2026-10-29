@@ -20,6 +20,7 @@ import {
   UsersRound,
 } from "@/components/ui/icons";
 
+import { PlannerDesktopSidebar } from "./planner-desktop-sidebar";
 import { BrandMark } from "@/components/nextevnt/brand-logo";
 import { WorkspaceSwitcher, type WorkspaceRole } from "@/components/planner/workspace-switcher";
 import { useCreditBalance } from "@/lib/planner-credits";
@@ -59,6 +60,7 @@ function isActive(pathname: string, href: string) {
 
 export function PlannerShell({ children, role = "planner" }: { children: ReactNode; role?: WorkspaceRole }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const credits = useCreditBalance();
   const creditLabel = credits.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const pathname = usePathname();
@@ -72,55 +74,9 @@ export function PlannerShell({ children, role = "planner" }: { children: ReactNo
 
   return (
     <div className="app-canvas min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border-subtle bg-surface lg:flex">
-        <Link href={home} className="flex h-16 items-center gap-2 border-b border-border-subtle px-5" aria-label="NXTEVNT home">
-          <BrandMark size="sm" />
-          <span className="text-[0.9375rem] font-bold tracking-[-0.02em] text-text-primary">NXTEVNT</span>
-        </Link>
+      <PlannerDesktopSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(value => !value)} home={home} role={role} pathname={pathname} groups={navGroups} />
 
-        <nav className="flex-1 overflow-y-auto px-4 py-7" aria-label={`${roleLabel} navigation`}>
-          <div className="space-y-6">
-            {role === "planner" ? navGroups.map((group) => (
-              <div key={group.label}>
-                <p className="mb-2 px-3 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-text-tertiary">{group.label}</p>
-                <div className="space-y-1">
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    const active = isActive(pathname, item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                          "relative flex h-10 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm transition-colors duration-150",
-                          active
-                            ? "bg-surface-selected font-semibold text-brand-primary"
-                            : "text-text-secondary hover:bg-background-subtle hover:text-text-primary",
-                        )}
-                      >
-                        <Icon aria-hidden="true" className={cn("size-5 shrink-0", active && "text-brand-primary")} weight={active ? "bold" : "regular"} />
-                        <span className="flex-1">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )) : <Link href={home} className="flex h-10 items-center gap-3 rounded-[var(--radius-md)] bg-surface-selected px-3 text-sm font-semibold text-brand-primary"><LayoutDashboard className="size-5" weight="bold" aria-hidden="true" />Overview</Link>}
-          </div>
-        </nav>
-
-        <Link href="/planner/profile" className="mx-4 mb-5 flex items-center gap-3 border-t border-border-subtle pt-5 text-left">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#e3ebe5] text-xs font-bold text-brand-primary ring-2 ring-white">AO</span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-text-primary">Amaka Okafor</span>
-            <span className="block truncate text-xs text-text-tertiary">Personal account</span>
-          </span>
-          <Settings2 aria-hidden="true" className="size-[18px] text-text-secondary" weight="regular" />
-        </Link>
-      </aside>
-
-      <div className="lg:pl-60">
+      <div className={cn("motion-safe:transition-[padding-left] motion-safe:duration-200", sidebarCollapsed ? "lg:pl-20" : "lg:pl-60")}>
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
             <Dialog.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

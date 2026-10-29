@@ -42,7 +42,12 @@ export async function saveBudgetAttachments(files: { attachment: BudgetAttachmen
   } finally { db.close(); }
 }
 
-export async function getBudgetAttachment(id: string): Promise<Blob | null> {
+export async function getBudgetAttachment(id: string, sourceUrl?: string): Promise<Blob | null> {
+  if (sourceUrl && /^\/quotes\/[\w./-]+\.pdf$/.test(sourceUrl) && !sourceUrl.includes("..")) {
+    const response = await fetch(sourceUrl);
+    if (!response.ok) throw new Error("This quote couldn’t be opened.");
+    return response.blob();
+  }
   const db = await database();
   try {
     return await new Promise<Blob | null>((resolve, reject) => {

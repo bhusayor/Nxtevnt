@@ -1,6 +1,7 @@
 import type { EventItem, PlannerEvent, TaskComment } from "./planner-events";
 
 export const moodboardLimit = 6;
+export const moodboardLimitForEvent = (event: Pick<PlannerEvent, "tier">) => event.tier === "premium" ? moodboardLimit : 2;
 export const moodboardImageLimit = 50;
 export const legacyMoodboardId = "legacy-moodboard";
 export type MoodboardSource = "planner" | "client";
@@ -54,7 +55,7 @@ function record(event: PlannerEvent, id: string, activity: BoardActivity): Plann
 
 export function createMoodboard(event: PlannerEvent, input: Pick<MoodboardBoard, "id" | "title" | "description" | "source">, activity: BoardActivity): PlannerEvent {
   const current = materialize(event), fields = cleanBoard(input);
-  if (current.moodboardBoards!.filter((board) => !board.archivedAt).length >= moodboardLimit) throw new Error("You have 6 active boards. Archive a board before creating another.");
+  if (current.moodboardBoards!.filter((board) => !board.archivedAt).length >= moodboardLimitForEvent(current)) throw new Error(current.tier === "premium" ? "You have 6 active boards. Archive a board before creating another." : "Standard events include 2 active boards. Archive a board or upgrade to Premium for 6 boards.");
   if (!input.id || current.moodboardBoards!.some((board) => board.id === input.id)) throw new Error("This board already exists.");
   return { ...current, moodboardBoards: [...current.moodboardBoards!, { ...fields, id: input.id, createdBy: activity.author, createdAt: activity.createdAt, updatedAt: activity.createdAt, activity: [activity] }] };
 }
@@ -67,7 +68,7 @@ export function editMoodboard(event: PlannerEvent, id: string, input: Pick<Moodb
 export function archiveMoodboard(event: PlannerEvent, id: string, archived: boolean, activity: BoardActivity): PlannerEvent {
   const current = materialize(event), board = requireBoard(current, id, false);
   if (archived === Boolean(board.archivedAt)) return current;
-  if (!archived && current.moodboardBoards!.filter((entry) => !entry.archivedAt).length >= moodboardLimit) throw new Error("Archive another board first. You can have 6 active boards at a time.");
+  if (!archived && current.moodboardBoards!.filter((entry) => !entry.archivedAt).length >= moodboardLimitForEvent(current)) throw new Error(current.tier === "premium" ? "Archive another board first. You can have 6 active boards at a time." : "Archive another board or upgrade to Premium to restore this one. Standard events include 2 active boards.");
   return record({ ...current, moodboardBoards: current.moodboardBoards!.map((entry) => entry.id === id ? { ...entry, archivedAt: archived ? activity.createdAt : undefined } : entry) }, id, activity);
 }
 

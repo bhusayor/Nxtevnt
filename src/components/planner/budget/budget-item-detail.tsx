@@ -48,7 +48,7 @@ export function BudgetItemDetail({ item, groupName, eventName, open, onOpenChang
     setError("");
     setBusyId(attachment.id);
     try {
-      const blob = await getBudgetAttachment(attachment.id);
+      const blob = await getBudgetAttachment(attachment.id, attachment.sourceUrl);
       if (!blob) { setError("This file isn’t available in this browser."); return; }
       if (kind === "text") { setPreview({ kind, name: attachment.name, content: await blob.text() }); return; }
       const mime = kind === "pdf" ? "application/pdf" : attachment.type || `image/${attachment.name.split(".").pop()?.toLowerCase() === "jpg" ? "jpeg" : attachment.name.split(".").pop()?.toLowerCase()}`;
@@ -61,7 +61,7 @@ export function BudgetItemDetail({ item, groupName, eventName, open, onOpenChang
     setError("");
     setBusyId(attachment.id);
     try {
-      const blob = await getBudgetAttachment(attachment.id);
+      const blob = await getBudgetAttachment(attachment.id, attachment.sourceUrl);
       if (!blob) { setError("This file isn’t available in this browser."); return; }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

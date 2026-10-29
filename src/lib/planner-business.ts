@@ -4,7 +4,12 @@ import { useSyncExternalStore } from "react";
 import { normalizePortfolioFolders, samplePlannerProfile, type PlannerProfile, type ProfileMetric } from "@/lib/planner-profile-types";
 export type { PlannerProfile } from "@/lib/planner-profile-types";
 
-export type PlannerInquiry = { id: string; name: string; email: string; subject: string; message: string; createdAt: string; status: "open" | "closed"; eventType?: string; eventId?: string };
+export type PlannerInquiry = {
+  id: string; name: string; email: string; subject: string; message: string; createdAt: string; status: "open" | "closed";
+  eventType?: string; eventId?: string; senderType?: "client" | "vendor";
+  eventDate?: string; location?: string; guestCount?: number; phone?: string;
+  budgetMin?: number; budgetMax?: number; currency?: string; services?: string[]; receivedVia?: string; requestDetail?: string;
+};
 const profileKey = "nxtevnt.planner.profile.v1";
 const inquiryKey = "nxtevnt.planner.inquiries.v1";
 const change = "nxtevnt:planner-business-changed";
@@ -56,6 +61,11 @@ export function savePlannerInquiry(inquiry: PlannerInquiry) {
   const current = inquirySnapshot();
   window.localStorage.setItem(inquiryKey, JSON.stringify(current.some((item) => item.id === inquiry.id) ? current.map((item) => item.id === inquiry.id ? inquiry : item) : [...current, inquiry]));
   inquiryRaw = undefined; window.dispatchEvent(new Event(change));
+}
+export function resolvePlannerInquiry(id: string) {
+  const latest = inquirySnapshot().find(inquiry => inquiry.id === id);
+  if (!latest) throw Error("This inquiry is no longer available.");
+  savePlannerInquiry({ ...latest, status: "closed" });
 }
 function verificationSnapshot() { return read("nxtevnt-planner-verification-status") === "verified"; }
 export function usePlannerVerified() { return useSyncExternalStore(subscribe, verificationSnapshot, () => false); }

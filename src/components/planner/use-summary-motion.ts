@@ -8,7 +8,7 @@ const panelWeights = { milestones: [3.25, 1], tasks: [1.15, 3] } as const;
 
 /** Render the destination immediately, at its final content width, while panels resize. */
 export function useSummaryMotion() {
-  const [expanded, setExpanded] = useState<Panel>("milestones");
+  const [expanded, setExpanded] = useState<Panel>("tasks");
   const [contentWidths, setContentWidths] = useState<Partial<Record<Panel, number>> | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [height, setHeight] = useState<number | null>(null);

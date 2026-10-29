@@ -1,0 +1,75 @@
+// Isolated picker state with a fixed clock; never creates events or changes browser storage.
+const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), Module = require('node:module'), ts = require('typescript'), React = require('react');
+const root = path.resolve(__dirname, '..'), load = Module._load, RealDate = Date;
+global.Date = class extends RealDate { constructor(...args) { super(...(args.length ? args : ['2026-10-26T12:00:00Z'])); } static now() { return new RealDate('2026-10-26T12:00:00Z').getTime(); } };
+const components = {};
+const stub = name => components[name] ||= () => null;
+Module._load = function(id, parent, main) {
+  if (id === '@radix-ui/react-dialog') return new Proxy({}, { get: (_, name) => name === '__esModule' ? true : stub(name) });
+  if (id === '@/components/ui/icons') return new Proxy({}, { get: (_, name) => stub(name) });
+  if (id === '@/components/ui/form-field') return { FormField: stub('FormField'), fieldControlStyles: '' };
+  if (id.startsWith('@/')) id = path.join(root, 'src', id.slice(2));
+  return load.call(this, id, parent, main);
+};
+for (const ext of ['.ts', '.tsx']) Module._extensions[ext] = (mod, file) => mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: 1, target: 9, jsx: 4, esModuleInterop: true } }).outputText, file);
+let states = [], cursor = 0, changed = [];
+React.useState = initial => { const i = cursor++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial; return [states[i], value => states[i] = typeof value === 'function' ? value(states[i]) : value]; };
+const { EventDatePicker } = require('../src/components/planner/event-date-time-fields.tsx');
+const walk = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(walk)];
+const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : [node.props?.children].flat(Infinity).map(text).join(' ').trim();
+let value = '';
+function draw() { cursor = 0; return walk(EventDatePicker({ id: 'event-date', value, onChange(date) { changed.push(date); value = date; } })); }
+const dialog = () => draw().find(node => node.type === components.Root);
+function find(label) { const button = draw().find(node => node.props['aria-label'] === label); assert(button, label); return button; }
+function click(label) { const button = find(label); assert(!button.props.disabled, label + ' enabled'); button.props.onClick(); }
+function chooseYear(year) { const button = walk(find('Choose year from range')).find(node => node.type === 'button' && text(node) === String(year)); assert(button); assert(!button.props.disabled); button.props.onClick(); }
+dialog().props.onOpenChange(true);
+assert.equal(dialog().props.open, true);
+assert(find('Choose day'));
+assert(find('25 October 2026').props.disabled);
+assert(!find('26 October 2026').props.disabled);
+assert(find('Previous month').props.disabled);
+click('Choose month');
+assert.equal(walk(find('Choose month of year')).filter(node => node.type === 'button').length, 12);
+assert(find('September 2026').props.disabled);
+assert.equal(changed.length, 0);
+click('Next year');
+click('March 2027');
+assert(find('Choose day'));
+assert(find('31 March 2027'));
+assert.equal(changed.length, 0, 'Navigation does not commit a date');
+click('15 March 2027');
+assert.equal(value, '2027-03-15');
+assert.equal(dialog().props.open, false);
+dialog().props.onOpenChange(true);
+assert.equal(text(find('Choose month')), 'March');
+assert.equal(text(find('Choose year')), '2027');
+assert(find('15 March 2027').props['aria-pressed']);
+click('Choose year');
+assert.equal(walk(find('Choose year from range')).filter(node => node.type === 'button').length, 12);
+assert(!walk(find('Choose year from range')).some(node => text(node) === '2025'), 'Year grid starts with this year');
+assert(find('Previous 12 years').props.disabled);
+click('Next 12 years');
+assert(walk(find('Choose year from range')).some(node => text(node) === '2038'));
+click('Previous 12 years');
+chooseYear(2028);
+assert(find('Choose month of year'));
+click('February 2028');
+assert(find('29 February 2028'));
+click('29 February 2028');
+assert.equal(value, '2028-02-29');
+dialog().props.onOpenChange(true);
+click('Choose month'); click('Next year'); click('February 2029');
+assert(!draw().some(node => node.props['aria-label'] === '29 February 2029'));
+click('Next month'); assert.equal(text(find('Choose month')), 'March');
+click('Previous month'); assert.equal(text(find('Choose month')), 'February');
+dialog().props.onOpenChange(false);
+assert.equal(value, '2028-02-29', 'Closing discards browsing only');
+dialog().props.onOpenChange(true);
+assert.equal(text(find('Choose year')), '2028');
+assert.equal(text(find('Choose month')), 'February');
+draw().find(node => node.type === 'button' && text(node) === 'Choose today').props.onClick();
+assert.equal(value, '2026-10-26'); assert.equal(dialog().props.open, false);
+assert.deepEqual(changed, ['2027-03-15', '2028-02-29', '2026-10-26']);
+Module._load = load; global.Date = RealDate;
+console.log('PASS: clickable month/year headers, month/year grids and paging, future-date bounds, leap years, explicit date commit, reopen/cancel preservation and Choose today. Isolated picker fixtures.');

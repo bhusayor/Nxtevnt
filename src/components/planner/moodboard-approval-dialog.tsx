@@ -10,6 +10,8 @@ import type { EventItem } from "@/lib/planner-events";
 import { approvalMethods, type MoodboardApprovalInput, type MoodboardApprovalMode } from "@/lib/planner-moodboards";
 import { prepareEventImage } from "@/lib/event-images";
 import { deleteMoodboardImage, storeMoodboardImage } from "@/lib/moodboard-images";
+import { budgetItemsForEvent } from "@/lib/planner-budget";
+import { assertEventStorageSpace, dataImageBytes } from "@/lib/event-storage";
 import { cn } from "@/lib/utils/cn";
 import { EventDecisionDetails } from "./event-decision-details";
 import type { PlannerEvent } from "@/lib/planner-events";
@@ -35,7 +37,11 @@ export function MoodboardApprovalDialog({ photo, event, clientName, error, readO
     submitting.current = true; setBusy(true); setProblem("");
     let uploaded: string | undefined;
     try {
-      if (mode === "on-behalf" && file) uploaded = await storeMoodboardImage(`approval-evidence:${crypto.randomUUID()}`, await prepareEventImage(file, 500_000));
+      if (mode === "on-behalf" && file) {
+        const data = await prepareEventImage(file, 500_000);
+        await assertEventStorageSpace(event, budgetItemsForEvent(event.id), dataImageBytes(data));
+        uploaded = await storeMoodboardImage(`approval-evidence:${crypto.randomUUID()}`, data);
+      }
       const evidence = mode === "on-behalf" ? uploaded || (keepEvidence ? approval?.evidence : undefined) : undefined;
       if (!onApprove(mode, { method, evidence, evidenceName: uploaded ? file?.name : keepEvidence ? approval?.evidenceName : undefined, expectedRevision: revision.current })) throw new Error("This decision couldn’t be saved. Please try again.");
       setFile(null);

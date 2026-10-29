@@ -16,17 +16,20 @@ Module._load = function(id, parent, main) {
   return originalLoad.call(this, id, parent, main);
 };
 for (const extension of ['.ts', '.tsx']) Module._extensions[extension] = (mod, file) => mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: 1, target: 9, jsx: 4, esModuleInterop: true } }).outputText, file);
-const originalHooks = Object.fromEntries(['useState', 'useRef', 'useId', 'useCallback', 'useSyncExternalStore'].map(key => [key, React[key]]));
+const originalHooks = Object.fromEntries(['useState', 'useRef', 'useId', 'useCallback', 'useEffect', 'useSyncExternalStore'].map(key => [key, React[key]]));
 React.useState = initial => { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; }]; };
 React.useRef = initial => { const i = cursor++; if (!(i in slots)) slots[i] = { current: initial }; return slots[i]; };
-React.useId = () => 'fixture-title'; React.useCallback = fn => fn; React.useSyncExternalStore = (_, read) => read();
+React.useId = () => 'fixture-title'; React.useCallback = fn => fn; React.useEffect = () => {}; React.useSyncExternalStore = (_, read) => read();
 global.window = { localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => { if (fail) throw Error('Storage full'); storage.set(key, value); } }, dispatchEvent() {} };
 const commands = [];
-global.document = { execCommand: (command, _, value) => commands.push([command, value]) };
+global.document = { execCommand: (command, _, value) => commands.push([command, value]), createElement: tag => new HTMLElement(tag.toUpperCase()) };
 global.Node = { TEXT_NODE: 3 };
 global.HTMLElement = class {
   constructor(tagName, childNodes = []) { this.tagName = tagName; this.childNodes = childNodes; this.style = { color: '', fontWeight: '', fontStyle: '', textDecoration: '' }; this.innerText = 'Fixture text'; }
   focus() {} getAttribute() { return null; }
+  appendChild(node) { this.childNodes.push(node); return node; }
+  set textContent(value) { this.childNodes = [{ nodeType: 3, textContent: value }]; }
+  get textContent() { return this.childNodes.map(node => node.textContent || '').join(''); }
 };
 const plain = value => ({ nodeType: 3, textContent: value });
 const walk = node => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(walk) : [node, ...walk(node.props?.children)];
@@ -37,10 +40,12 @@ const { InlineNoteComposer } = require('../src/components/planner/note-composer.
 const { EventNotesTab } = require('../src/components/planner/event-notes-tab.tsx');
 const { EventNotesBrief } = require('../src/components/planner/event-notes-brief.tsx');
 const { EventQuestionnairesTab } = require('../src/components/planner/event-questionnaires-tab.tsx');
+const { QuestionnaireBuilder } = require('../src/components/planner/questionnaire-builder.tsx');
+const { ClientQuestionnaires } = require('../src/components/planner/client-questionnaires.tsx');
 const { starterTemplates } = require('../src/lib/questionnaires.ts');
-const { filterEventNotes, noteIsFromNimi } = require('../src/lib/event-notes.ts');
+const { filterEventNotes, noteIsFromNimi, noteTitleFromBody } = require('../src/lib/event-notes.ts');
 const eventKey = 'nxtevnt.planner.events.v1', getEvent = () => JSON.parse(storage.get(eventKey))[0];
-const event = { id: 'event', name: 'Fixture event', type: 'Wedding', date: '2099-01-01', notes: '', description: 'An intimate celebration', sections: { tasks: [], decisions: [] }, noteEntries: [{ id: 'pinned', title: 'Essentials', body: 'Pinned thought', pinned: true, author: 'Planner', createdAt: '2026-10-01' }, { id: 'note', title: 'Meeting', body: 'Original thought', pinned: false, author: 'Planner', createdAt: '2026-10-02' }] };
+const event = { id: 'event', name: 'Fixture event', tier: 'premium', type: 'Wedding', date: '2099-01-01', notes: '', description: 'An intimate celebration', sections: { tasks: [], decisions: [] }, noteEntries: [{ id: 'pinned', title: 'Essentials', body: 'Pinned thought', pinned: true, author: 'Planner', createdAt: '2026-10-01' }, { id: 'note', title: 'Meeting', body: 'Original thought', pinned: false, author: 'Planner', createdAt: '2026-10-02' }] };
 const request = id => ({ id, templateId: 'fixture', title: `Questionnaire ${id}`, sections: [{ id: 'section', title: 'Details', questions: [{ id: 'question', label: 'Your preference?' }] }], answers: {}, status: 'pending', sentAt: '2026-10-01' });
 try {
   let saved, saveResult = false;
@@ -64,6 +69,47 @@ try {
   let requested = 0;
   draw(InlineNoteComposer, props).find(n => n.props?.role === 'textbox').props.onKeyDown({ key: 'Enter', ctrlKey: false, metaKey: false, nativeEvent: {}, preventDefault() { assert.fail('Plain Enter remains a newline'); } });
   draw(InlineNoteComposer, props).find(n => n.props?.role === 'textbox').props.onKeyDown({ key: 'Enter', ctrlKey: true, nativeEvent: {}, currentTarget: { closest: () => ({ requestSubmit: () => requested++ }) }, preventDefault() {} }); assert.equal(requested, 1);
+  reset(); nodes = draw(InlineNoteComposer, props);
+  assert.equal(nodes.find(n => n.type === 'input').props.required, undefined, 'Title is optional');
+  assert(text(nodes.find(n => n.type === 'label')).includes('Optional'));
+  assert(nodes.find(n => n.props?.['aria-label'] === 'Start voice note'), 'Voice note control sits beside Add note');
+  assert(nodes.find(n => n.type === stubs.Button && text(n) === 'Add note').props.disabled);
+  const untitledEditor = new HTMLElement('DIV', [plain('Venue walkthrough updates\nBring colour samples')]);
+  nodes.find(n => n.props?.role === 'textbox').props.ref(untitledEditor);
+  nodes.find(n => n.props?.role === 'textbox').props.onInput({ currentTarget: untitledEditor });
+  nodes = draw(InlineNoteComposer, props);
+  assert.equal(nodes.find(n => n.type === stubs.Button && text(n) === 'Add note').props.disabled, false, 'Body alone enables Add note');
+  nodes.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(saved, { title: 'Venue walkthrough updates', body: 'Venue walkthrough updates\nBring colour samples' });
+  assert.equal(noteTitleFromBody('- **Flowers** and [styling](https://example.com)\nNext step'), 'Flowers and styling');
+  let voiceSession;
+  window.webkitSpeechRecognition = class {
+    constructor() { voiceSession = this; }
+    start() { this.onstart?.(); }
+    stop() { this.onend?.(); }
+    abort() { this.onend?.(); }
+  };
+  reset(); nodes = draw(InlineNoteComposer, props);
+  const voiceEditor = new HTMLElement('DIV');
+  nodes.find(n => n.props?.role === 'textbox').props.ref(voiceEditor);
+  nodes.find(n => n.props?.['aria-label'] === 'Start voice note').props.onClick();
+  nodes = draw(InlineNoteComposer, props);
+  assert(nodes.find(n => n.props?.['aria-label'] === 'Stop voice note').props['aria-pressed']);
+  assert.equal(voiceSession.lang, 'en-NG');
+  voiceSession.onresult({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: '  Remember the flowers  ' } }] });
+  voiceSession.onresult({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: '  Remember the flowers  ' } }] });
+  assert.equal(voiceEditor.childNodes.length, 1, 'Repeated recognition results do not duplicate the transcript');
+  nodes = draw(InlineNoteComposer, props);
+  assert(nodes.find(n => n.type === stubs.Button && text(n) === 'Add note').props.disabled, 'Finish recording before saving');
+  nodes.find(n => n.props?.['aria-label'] === 'Stop voice note').props.onClick();
+  nodes = draw(InlineNoteComposer, props);
+  assert.equal(nodes.find(n => n.type === stubs.Button && text(n) === 'Add note').props.disabled, false);
+  nodes.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(saved, { title: 'Remember the flowers', body: 'Remember the flowers' });
+  delete window.webkitSpeechRecognition;
+  reset(); nodes = draw(InlineNoteComposer, props);
+  nodes.find(n => n.props?.['aria-label'] === 'Start voice note').props.onClick();
+  assert(text(draw(InlineNoteComposer, props)).includes('not supported in this browser'));
   storage.set(eventKey, JSON.stringify([event])); reset();
   const nimiNote = { id: 'nimi-note', title: 'Assistant takeaway', body: 'Fixture only', pinned: false, author: 'Nimi', authorId: 'nimi', createdAt: '2026-10-03' };
   const filterFixture = [...event.noteEntries, nimiNote];
@@ -105,6 +151,57 @@ try {
   reset(); nodes = draw(EventNotesBrief, { event: getEvent() }); nodes.find(n => n.props?.['aria-label'] === 'Edit event brief').props.onClick();
   draw(EventNotesBrief, { event: getEvent() }).find(n => n.type === 'textarea').props.onChange({ target: { value: 'Updated brief' } });
   draw(EventNotesBrief, { event: getEvent() }).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); assert.equal(getEvent().description, 'Updated brief');
+  storage.set(eventKey, JSON.stringify([{ ...event, questionnaires: [] }]));
+  let savedDraftId = '', sentDraftId = '';
+  const builderProps = { event: getEvent(), onSaved: id => { savedDraftId = id; }, onSent: id => { sentDraftId = id; } };
+  reset(); nodes = draw(QuestionnaireBuilder, builderProps);
+  assert(nodes.some(n => n.type === stubs.Button && text(n) === 'Save'));
+  assert(nodes.some(n => n.type === stubs.Button && text(n) === 'Save and send'));
+  nodes.find(n => n.type === stubs.Button && text(n) === 'Save').props.onClick();
+  assert.equal(getEvent().questionnaires.length, 0, 'An untouched form does not fill a slot');
+  nodes = draw(QuestionnaireBuilder, builderProps);
+  nodes.find(n => n.type === 'input' && n.props.placeholder?.includes('Ada &')).props.onChange({ target: { value: 'Discovery brief' } });
+  nodes = draw(QuestionnaireBuilder, builderProps);
+  nodes.find(n => n.type === stubs.Button && text(n) === 'Save').props.onClick();
+  let draft = getEvent().questionnaires[0];
+  assert.equal(draft.id, savedDraftId);
+  assert.equal(draft.status, 'draft'); assert.equal(draft.sentAt, ''); assert(draft.savedAt);
+  assert.equal(draft.sections[0].questions[0].label, '', 'Incomplete questions survive draft save');
+  reset(); nodes = draw(EventQuestionnairesTab, { event: getEvent() });
+  assert.equal(nodes.filter(n => n.props?.['data-questionnaire-slot'] === 'draft').length, 1);
+  assert.equal(nodes.filter(n => n.props?.['data-questionnaire-slot'] === 'empty').length, 2);
+  nodes.find(n => n.props?.['aria-label'] === 'Edit draft: Discovery brief').props.onClick();
+  nodes = draw(EventQuestionnairesTab, { event: getEvent() });
+  assert.equal(nodes.find(n => n.type === stubs.QuestionnaireBuilder).props.initialDraft.id, draft.id);
+  reset(); nodes = draw(ClientQuestionnaires, {});
+  assert(!text(nodes).includes('Discovery brief'), 'Draft is not visible in the client workspace');
+  reset(); nodes = draw(QuestionnaireBuilder, { ...builderProps, event: getEvent(), initialDraft: draft });
+  assert.equal(nodes.find(n => n.type === 'input' && n.props.placeholder?.includes('Ada &')).props.value, 'Discovery brief');
+  nodes.find(n => n.type === 'input' && n.props['aria-label'] === 'Question 1 in Section 1').props.onChange({ target: { value: 'What matters most?' } });
+  nodes = draw(QuestionnaireBuilder, { ...builderProps, event: getEvent(), initialDraft: draft });
+  nodes.find(n => n.type === stubs.Button && text(n) === 'Save and send').props.onClick();
+  nodes = draw(QuestionnaireBuilder, { ...builderProps, event: getEvent(), initialDraft: draft });
+  nodes.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.equal(sentDraftId, draft.id, 'Sending uses the saved draft slot');
+  assert.equal(getEvent().questionnaires.length, 1);
+  assert.equal(getEvent().questionnaires[0].status, 'pending');
+  assert(getEvent().questionnaires[0].sentAt);
+  reset(); nodes = draw(ClientQuestionnaires, {});
+  assert(text(nodes).includes('Discovery brief'), 'Client sees the questionnaire after sending');
+  const savedRecord = getEvent().questionnaires[0];
+  for (const id of ['draft-two', 'draft-three']) store.savePlannerQuestionnaireDraft('event', { ...savedRecord, id, title: id, status: 'draft', sentAt: '', savedAt: '2026-10-28T12:00:00.000Z' });
+  assert.equal(getEvent().questionnaires.length, 3);
+  assert.throws(() => store.savePlannerQuestionnaireDraft('event', { ...savedRecord, id: 'draft-four', status: 'draft', sentAt: '' }), /three.*slots/);
+  assert.doesNotThrow(() => store.assertPlannerQuestionnaireSlot('event', 'draft-two'));
+  assert.throws(() => store.assertPlannerQuestionnaireSlot('event'), /three.*slots/);
+  store.savePlannerQuestionnaireDraft('event', { ...getEvent().questionnaires[1], title: 'Revised draft' });
+  assert.equal(getEvent().questionnaires[1].title, 'Revised draft');
+  const beforeFailure = storage.get(eventKey); fail = true;
+  assert.throws(() => store.savePlannerQuestionnaireDraft('event', { ...getEvent().questionnaires[1], title: 'Unsaved edit' }), /Storage full/);
+  fail = false; assert.equal(storage.get(eventKey), beforeFailure, 'Failed draft save preserves the last durable version');
+  store.sendPlannerQuestionnaire('event', { ...getEvent().questionnaires[1], status: 'pending', sentAt: '2026-10-28T13:00:00.000Z' });
+  assert.equal(getEvent().questionnaires.length, 3, 'Sending an existing draft reuses its slot');
+  assert.equal(getEvent().questionnaires[1].status, 'pending');
   for (let count = 0; count <= 4; count++) {
     reset(); const current = { ...getEvent(), questionnaires: Array.from({ length: count }, (_, i) => request(String(i))) };
     nodes = draw(EventQuestionnairesTab, { event: current });
@@ -141,7 +238,24 @@ try {
   store.sendPlannerQuestionnaire('event', request('third')); assert.equal(getEvent().questionnaires.length, 3, 'Duplicate sending is idempotent');
   store.updatePlannerEvent('event', e => ({ ...e, questionnaires: e.questionnaires.slice(1) })); assert.doesNotThrow(() => store.assertPlannerQuestionnaireSlot('event'));
   fail = true; assert.throws(() => store.sendPlannerQuestionnaire('event', request('retry')), /Storage full/); fail = false; assert.equal(getEvent().questionnaires.length, 2);
+  const standard = { ...event, tier: 'standard', questionnaires: [] };
+  storage.set(eventKey, JSON.stringify([standard]));
+  reset(); nodes = draw(EventQuestionnairesTab, { event: getEvent() });
+  assert.equal(nodes.filter(n => n.props?.['data-questionnaire-slot'] === 'empty').length, 1);
+  assert.deepEqual(nodes.filter(n => n.type.name === 'EventTierChip').map(n => n.props.slotNumber), [2, 3]);
+  assert(nodes.filter(n => n.type.name === 'EventTierChip').every(n => n.props.slotKind === 'questionnaire'));
+  store.sendPlannerQuestionnaire('event', request('first'));
+  reset(); nodes = draw(EventQuestionnairesTab, { event: getEvent() });
+  assert.equal(nodes.filter(n => n.props?.['data-questionnaire-slot'] === 'empty').length, 0);
+  assert.equal(nodes.filter(n => n.type.name === 'EventTierChip').length, 2);
+  assert.throws(() => store.assertPlannerQuestionnaireSlot('event'), /Upgrade to Premium/);
+  assert.throws(() => store.savePlannerQuestionnaireDraft('event', { ...request('second'), status: 'draft' }), /Upgrade to Premium/);
+  assert.throws(() => store.sendPlannerQuestionnaire('event', request('second')), /Upgrade to Premium/);
+  store.updatePlannerEvent('event', e => ({ ...e, tier: 'premium' }));
+  assert.doesNotThrow(() => store.assertPlannerQuestionnaireSlot('event'));
+  store.sendPlannerQuestionnaire('event', request('second'));
+  assert.equal(getEvent().questionnaires.length, 2);
   store.updatePlannerEvent('event', e => ({ ...e, cancelledAt: '2026-10-01' })); assert.throws(() => store.sendPlannerQuestionnaire('event', request('cancelled')), /Reopen/);
   assert.throws(() => store.sendPlannerQuestionnaire('missing', request('missing')), /no longer exists/);
 } finally { Object.assign(React, originalHooks); Module._load = originalLoad; }
-console.log('PASS: inline title/body editor, growing layout and formatting order; draft retention, safe formatting and keyboard save; inline edits, sidebar brief/pins; three visible slots, template sending, capacity/idempotence/cancellation/failure guards and legacy record preservation. Fixtures only.');
+console.log('PASS: optional note title, voice transcription start/stop/deduplication and unsupported fallback; questionnaire draft save/reopen/send, client privacy, slot limit and failed-save rollback; existing notes, formatting, templates and answer flows. Fixtures only.');

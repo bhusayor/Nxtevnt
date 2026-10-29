@@ -48,7 +48,8 @@ function fire(delay) { const entry = [...timers].find(([, timer]) => timer.delay
 const transition = propertyName => { const target = {}; return { propertyName, target, currentTarget: target }; };
 const cleanup = () => { for (const entry of [...effects.values(), ...layoutEffects.values()]) entry.cleanup?.(); };
 try {
-  reset(); draw(); measure();
+  reset(); draw(); assert.equal(model.expanded, 'tasks', 'Task is expanded on arrival'); measure();
+  model.select('milestones'); draw(); fire(360); fire(260); measure();
   model.select('tasks'); draw();
   assert.equal(model.phase, 'sliding'); assert.equal(model.height, 352); assert.equal(model.layout, 'tasks'); assert.equal(model.expanded, 'tasks', 'Destination cards render immediately, with no temporary stretched-pill state'); assert(model.isResizing);
   assert(Math.abs(model.contentWidths.milestones - ((1400 - 16) * 1.15 / 4.15 - 42)) < 0.001);
@@ -71,11 +72,11 @@ try {
   assert.equal(model.phase, 'idle'); assert.equal(model.expanded, 'tasks'); assert.equal(model.contentWidths, null); assert.equal(model.height, null); assert.equal(timers.size, 0);
   cleanup(); assert.equal(timers.size, 0); assert.equal(mediaListeners.size, 0); assert.equal(listeners.size, 0);
 
-  reset(); reduced = true; draw(); measure(); model.select('tasks'); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.layout, 'tasks'); assert.equal(timers.size, 0); cleanup();
-  reset(); desktop = false; draw(); measure(); model.select('tasks'); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.expanded, 'tasks'); assert.equal(timers.size, 0); cleanup();
-  reset(); draw(); measure(); model.select('tasks'); draw(); listeners.get('resize')(); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.layout, 'tasks'); assert.equal(model.height, null); assert.equal(timers.size, 0); cleanup();
-  reset(); draw(); measure(); model.select('tasks'); draw(); cleanup(); assert.equal(timers.size, 0, 'Unmount cancels timers');
-  reset(); draw(); measure(); model.grid.current.querySelectorAll = () => []; model.select('tasks'); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.contentWidths, null, 'Unavailable geometry falls back to the destination without a blank stage'); cleanup();
+  reset(); reduced = true; draw(); measure(); model.select('milestones'); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.layout, 'milestones'); assert.equal(timers.size, 0); cleanup();
+  reset(); desktop = false; draw(); measure(); model.select('milestones'); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.expanded, 'milestones'); assert.equal(timers.size, 0); cleanup();
+  reset(); draw(); measure(); model.select('milestones'); draw(); listeners.get('resize')(); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.layout, 'milestones'); assert.equal(model.height, null); assert.equal(timers.size, 0); cleanup();
+  reset(); draw(); measure(); model.select('milestones'); draw(); cleanup(); assert.equal(timers.size, 0, 'Unmount cancels timers');
+  reset(); draw(); measure(); model.grid.current.querySelectorAll = () => []; model.select('milestones'); draw(); assert.equal(model.phase, 'idle'); assert.equal(model.contentWidths, null, 'Unavailable geometry falls back to the destination without a blank stage'); cleanup();
 
   const source = fs.readFileSync(path.join(root, 'src/components/planner/task-plan-summary.tsx'), 'utf8');
   assert(!source.includes('key={active ?')); assert(source.includes('compact={!active}')); assert(source.includes('width: motion.contentWidths?.[id]')); assert(source.includes('data-summary-content={id}')); assert(!/opacity-0|transition-opacity|contentHidden/.test(source), 'Information must stay visible throughout the transition'); assert(source.includes('overflow-hidden'));

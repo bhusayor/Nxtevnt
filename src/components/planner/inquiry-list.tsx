@@ -1,0 +1,18 @@
+"use client";
+
+import { useState } from "react";
+import { ArrowUpRight, LayoutGrid, List } from "@/components/ui/icons";
+import { inquiryFacts } from "@/lib/inquiry-details";
+import { cn } from "@/lib/utils/cn";
+import { AttentionActionRow } from "./attention-action-row";
+import type { AttentionItem } from "./attention-queue-items";
+
+export function InquiryList({ items, onOpen }: { items: AttentionItem[]; onOpen: (item: AttentionItem) => void }) {
+  const [view, setView] = useState<"rows" | "table">("table");
+  return <div><div className="flex flex-wrap items-center justify-between gap-3 py-4"><p className="text-sm text-text-secondary">{items.length} {items.length === 1 ? "inquiry" : "inquiries"}</p><div role="group" aria-label="Inquiry view" className="inline-flex rounded-lg border border-border-subtle bg-[#f8faf8] p-1">{(["rows", "table"] as const).map(option => { const Icon = option === "rows" ? List : LayoutGrid; return <button key={option} type="button" aria-pressed={view === option} onClick={() => setView(option)} className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors", view === option ? "bg-white text-brand-primary shadow-sm" : "text-text-secondary hover:text-text-primary")}><Icon className="size-4" aria-hidden="true" />{option === "rows" ? "Rows" : "Table"}</button>; })}</div></div>
+    {view === "rows" ? <div className="divide-y divide-border-subtle">{items.map(item => <AttentionActionRow key={item.id} item={item} tab="inquiries" onOpen={onOpen} />)}</div> : <div className="overflow-x-auto rounded-xl border border-border-subtle"><table className="w-full min-w-[1080px] table-fixed text-left text-sm"><caption className="sr-only">Open inquiries with received date, event type, preferred event date, location and guest size.</caption><colgroup>{[21, 12, 11, 15, 17, 10, 14].map((width, i) => <col key={i} style={{ width: width + "%" }} />)}</colgroup><thead className="border-b border-border-subtle bg-[#f5f8f6] text-xs font-semibold text-text-secondary"><tr>{["Client / sender", "Received", "Event type", "Preferred event date", "Location", "Guest size", ""].map((label, i) => <th key={i} scope="col" className="px-4 py-3.5">{label || <span className="sr-only">Open inquiry</span>}</th>)}</tr></thead><tbody className="divide-y divide-border-subtle">{items.map(item => {
+      if (!item.inquiry) return null; const facts = inquiryFacts(item.inquiry);
+      return <tr key={item.id} className="transition-colors hover:bg-[#f8fbf9]"><th scope="row" className="px-4 py-4"><span className="block max-w-full truncate font-semibold text-text-primary" title={item.inquiry.name}>{item.inquiry.name}</span><p className="mt-0.5 truncate text-xs font-normal leading-5 text-text-secondary" title={item.inquiry.subject}>{item.inquiry.subject}</p></th>{[facts.received, facts.eventType, facts.eventDate, facts.location, facts.guests].map((value, i) => <td key={i} className={cn("px-4 py-4 leading-6 text-text-secondary", [0, 2, 4].includes(i) && "whitespace-nowrap")}><span className={cn("block", [0, 2, 4].includes(i) ? "truncate" : "break-words")} title={value}>{value}</span></td>)}<td className="px-3 py-4"><button type="button" onClick={() => onOpen(item)} aria-label={"View and respond to inquiry: " + item.inquiry.name} className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-primary underline decoration-brand-primary/30 underline-offset-4 hover:decoration-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">View and respond<ArrowUpRight className="size-4" aria-hidden="true" /></button></td></tr>;
+    })}</tbody></table></div>}
+  </div>;
+}

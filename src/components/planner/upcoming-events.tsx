@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ClipboardCheck, MapPin, NotebookPen, Plus } from "@/components/ui/icons";
 import { EventCardProgress } from "@/components/planner/event-card-progress";
+import { EventTierChip } from "@/components/planner/event-tier-chip";
 import { EventWeatherPill } from "./event-weather-pill";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -30,7 +31,7 @@ export function DashboardEventCard({ event, featured = false, adaptiveRow = fals
         <Image src={event.image} alt={event.alt} fill preload={featured} unoptimized={isCustomCover(event.image)} sizes={imageSizes} className="object-cover" style={{ objectPosition: event.position }} />
         <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" aria-hidden="true" />
         <span className="absolute top-4 left-4 flex size-12 flex-col items-center justify-center rounded-lg bg-white/95 text-text-primary shadow-sm"><span className="text-xs font-semibold uppercase tracking-widest">{event.month}</span><span className="text-xl font-semibold leading-6 tracking-tight">{event.day}</span></span>
-        <span className="absolute top-4 right-4 max-w-[calc(100%-6rem)]"><EventWeatherPill date={event.dateISO} city={event.weatherCity} timeZone={event.timeZone} status={event.status} /></span>
+        <div className="absolute top-4 right-4 z-20 flex max-w-[calc(100%-6rem)] flex-wrap items-center justify-end gap-1.5"><EventWeatherPill date={event.dateISO} city={event.weatherCity} timeZone={event.timeZone} status={event.status} /><EventTierChip eventId={event.slug} eventName={event.name} tier={event.tier} cancelled={event.status === "cancelled"} /></div>
         <span className="absolute right-4 bottom-4 left-4 flex items-center justify-between gap-2 text-white"><span className="text-sm font-medium">{event.type}</span><span className="rounded-full border border-white/30 bg-black/15 px-2.5 py-1 text-xs backdrop-blur-sm">{event.countdown}</span></span>
       </div>
       <div className={cn("flex min-w-0 flex-1 flex-col p-5", featured && "@min-[680px]/events:justify-center @min-[680px]/events:p-7")}>
@@ -60,6 +61,7 @@ export function asDashboardEvent(event: PlannerEvent): DashboardEvent {
     slug: event.id,
     name: event.name,
     type: event.type,
+    tier: event.tier,
     date: formatEventDate(event.date),
     day: new Intl.DateTimeFormat("en-NG", { day: "2-digit" }).format(date),
     month: new Intl.DateTimeFormat("en-NG", { month: "short" }).format(date),

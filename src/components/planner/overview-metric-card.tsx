@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { ArrowUpRight } from "@/components/ui/icons";
 import type { PhosphorIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 
@@ -28,6 +30,9 @@ type MetricCardProps = {
   readable?: boolean;
   detailClassName?: string;
   animate?: boolean;
+  href?: string;
+  badge?: string;
+  supportingText?: string;
 };
 
 function countTarget(value: string | number, animateCurrency: boolean) {
@@ -102,7 +107,7 @@ function AnimatedMetricValue({ value, animateCurrency }: { value: string | numbe
   return <><span className="sr-only">{value}</span><span ref={element} aria-hidden="true">{display}</span></>;
 }
 
-export function OverviewMetricCard({ label, value, detail, icon: Icon, tone = "sage", progress, animateCurrency = false, compact, className, readable = false, detailClassName, animate = true }: MetricCardProps) {
+export function OverviewMetricCard({ label, value, detail, icon: Icon, tone = "sage", progress, animateCurrency = false, compact, className, readable = false, detailClassName, animate = true, href, badge, supportingText }: MetricCardProps) {
   const palette = tones[tone];
   const percent = progress ? Math.max(0, Math.min(100, progress.value)) : 0;
   const content = <>
@@ -110,11 +115,13 @@ export function OverviewMetricCard({ label, value, detail, icon: Icon, tone = "s
       <span className={cn("pt-0.5 font-semibold text-text-secondary", readable ? "text-sm leading-5" : "text-[0.6875rem] uppercase leading-4 tracking-[0.08em]")}>{label}</span>
       <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", palette.icon)}><Icon className="size-[18px]" weight="bold" aria-hidden="true" /></span>
     </div>
-    <strong className={cn("mt-3 block break-words font-semibold leading-tight tracking-[-0.045em] tabular-nums text-text-primary", compact ? "text-[1.375rem] sm:text-[1.5rem]" : "text-[1.875rem] sm:text-[2.125rem]")}>{animate ? <AnimatedMetricValue value={value} animateCurrency={animateCurrency} /> : value}</strong>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><strong className={cn("block break-words font-semibold leading-tight tracking-[-0.045em] tabular-nums text-text-primary", compact ? "text-[1.375rem] sm:text-[1.5rem]" : "text-[1.875rem] sm:text-[2.125rem]")}>{animate ? <AnimatedMetricValue value={value} animateCurrency={animateCurrency} /> : value}</strong>{badge && <span className="rounded-full border border-[#cddfea] bg-[#edf5fa] px-2.5 py-1 text-xs font-semibold text-[#446d8b]">{badge}</span>}</div>
     {progress && <div className="mt-3" role="progressbar" aria-label={progress.label} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}><div className={cn("h-1.5 overflow-hidden rounded-full", palette.track)}><span className={cn("metric-card-progress block h-full origin-left rounded-full motion-safe:transition-[width] motion-safe:duration-500", palette.fill)} style={{ width: `${percent}%` }} /></div></div>}
     <div className="mt-auto pt-4">
-      <div className={cn("flex min-h-10 items-center rounded-xl px-3 py-2.5 font-medium", readable ? "text-sm leading-5" : "text-[0.6875rem] leading-4", palette.footer, detailClassName)}>{detail}</div>
+      <div className={cn("flex min-h-10 items-center justify-between gap-2 rounded-xl px-3 py-2.5 font-medium", readable ? "text-sm leading-5" : "text-[0.6875rem] leading-4", palette.footer, detailClassName)}><span>{detail}</span>{href && <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" />}</div>
+      {supportingText && <p className="mt-2 text-xs leading-5 text-text-secondary">{supportingText}</p>}
     </div>
   </>;
-  return <div className={cn("flex min-w-0 flex-col rounded-2xl border border-border-subtle bg-white p-4 text-left shadow-[0_8px_26px_-23px_rgba(20,45,30,.35)] sm:p-5", animate && "metric-card-enter", className)}>{content}</div>;
+  const cardClass = cn("flex min-w-0 flex-col rounded-2xl border border-border-subtle bg-white p-4 text-left shadow-[0_8px_26px_-23px_rgba(20,45,30,.35)] sm:p-5", animate && "metric-card-enter", href && "transition-[border-color,box-shadow] hover:border-brand-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-primary", className);
+  return href ? <Link href={href} className={cardClass}>{content}</Link> : <div className={cardClass}>{content}</div>;
 }

@@ -4,11 +4,14 @@ import { useId, useState, type ChangeEvent } from "react";
 import Image from "next/image";
 import { Check, ImagePlus, LoaderCircle } from "@/components/ui/icons";
 
-import { eventCovers, isCustomCover } from "@/lib/planner-events";
+import { eventCovers, isCustomCover, type PlannerEvent } from "@/lib/planner-events";
 import { prepareEventImage } from "@/lib/event-images";
+import { budgetItemsForEvent } from "@/lib/planner-budget";
+import { assertEventStorageSpace, dataImageBytes } from "@/lib/event-storage";
+import { EventTierChip } from "./event-tier-chip";
 import { cn } from "@/lib/utils/cn";
 
-export function CoverPicker({ value, onChange }: { value: string; onChange: (src: string) => void }) {
+export function CoverPicker({ value, onChange, event }: { value: string; onChange: (src: string) => void; event?: PlannerEvent }) {
   const uploadId = useId();
   const [customCover, setCustomCover] = useState(isCustomCover(value) ? value : "");
   const [busy, setBusy] = useState(false);
@@ -21,6 +24,7 @@ export function CoverPicker({ value, onChange }: { value: string; onChange: (src
     setError("");
     try {
       const image = await prepareEventImage(file);
+      if (event) await assertEventStorageSpace(event, budgetItemsForEvent(event.id), Math.max(0, dataImageBytes(image) - dataImageBytes(event.image)));
       setCustomCover(image);
       onChange(image);
     } catch (failure) {
@@ -40,5 +44,6 @@ export function CoverPicker({ value, onChange }: { value: string; onChange: (src
     </div>
     <p className="mt-2 text-xs text-text-tertiary">Choose a preset or add a JPG, PNG or WebP photo. Saved in this browser.</p>
     {error && <p role="alert" className="mt-2 text-xs text-error">{error}</p>}
+    {error.includes("storage limit") && event && event.tier !== "premium" && <div className="mt-2"><EventTierChip eventId={event.id} eventName={event.name} tier={event.tier} mode="storage-link" /></div>}
   </fieldset>;
 }

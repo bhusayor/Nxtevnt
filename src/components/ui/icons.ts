@@ -47,6 +47,7 @@ export { HardHatIcon as Construction } from "@phosphor-icons/react/dist/ssr/Hard
 export { AddressBookIcon as ContactRound } from "@phosphor-icons/react/dist/ssr/AddressBook";
 export { CopyIcon as Copy } from "@phosphor-icons/react/dist/ssr/Copy";
 export { CreditCardIcon as CreditCard } from "@phosphor-icons/react/dist/ssr/CreditCard";
+export { CrownIcon as Crown } from "@phosphor-icons/react/dist/ssr/Crown";
 export { DownloadSimpleIcon as Download } from "@phosphor-icons/react/dist/ssr/DownloadSimple";
 export { EyeIcon as Eye } from "@phosphor-icons/react/dist/ssr/Eye";
 export { EyeSlashIcon as EyeOff } from "@phosphor-icons/react/dist/ssr/EyeSlash";
@@ -85,6 +86,8 @@ export { WhatsappLogoIcon as WhatsApp } from "@phosphor-icons/react/dist/ssr/Wha
 export { PhoneIcon as Phone } from "@phosphor-icons/react/dist/ssr/Phone";
 export { MapPinIcon as MapPin } from "@phosphor-icons/react/dist/ssr/MapPin";
 export { ListIcon as Menu } from "@phosphor-icons/react/dist/ssr/List";
+export { MicrophoneIcon as Microphone } from "@phosphor-icons/react/dist/ssr/Microphone";
+export { SidebarSimpleIcon as PanelLeft } from "@phosphor-icons/react/dist/ssr/SidebarSimple";
 export { ChatCircleDotsIcon as MessageCircleReply } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 export { ChatTextIcon as MessageSquareText } from "@phosphor-icons/react/dist/ssr/ChatText";
 export { MonitorIcon as Monitor } from "@phosphor-icons/react/dist/ssr/Monitor";

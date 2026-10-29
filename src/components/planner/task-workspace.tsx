@@ -60,14 +60,14 @@ export function TaskWorkspace({ event, initialTaskId, initialAction, onActionCon
   const today = localEventToday(event.timeZone);
 
   const [collapsedIds, setCollapsedIds] = useState<string[]>([]);
-  const [editor, setEditor] = useState<Editor>(initialTask ? { kind: "task", id: initialTask.id } : initialAction === "add-task" && !event.cancelledAt ? { kind: "task" } : null);
+  const [editor, setEditor] = useState<Editor>(!initialTask && initialAction === "add-task" && !event.cancelledAt ? { kind: "task" } : null);
   useEffect(() => { if (initialAction === "add-task") onActionConsumed?.(); }, [initialAction, onActionConsumed]);
   const [deleting, setDeleting] = useState<DeleteTarget>(null);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [view, setView] = useState<"milestones" | "kanban">("milestones");
   const [milestoneFilter, setMilestoneFilter] = useState("all");
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
-  const [selectedTask, setSelectedTask] = useState<{ id: string; focusComments?: boolean } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<{ id: string; focusComments?: boolean } | null>(initialTask ? { id: initialTask.id } : null);
   const [feedback, setFeedback] = useState("");
   const [search, setSearch] = useState("");
   const [title, setTitle] = useState(initialTask?.title ?? "");

@@ -5,7 +5,7 @@ import { guestCommunicationsMilestone } from "@/lib/event-setup-templates";
 import type { BudgetProposal } from "@/lib/budget-proposals";
 import type { MoodboardBoard } from "@/lib/planner-moodboards";
 import type { AgendaFields, AgendaSharing } from "@/lib/event-agenda";
-import type { EventFileFolder, EventFileRecord } from "@/lib/event-files";
+import type { EventFileFolder, EventFileOverride, EventFileRecord } from "@/lib/event-files";
 
 export type EventItem = {
   id: string;
@@ -113,8 +113,9 @@ export type SentQuestionnaire = {
   category?: string;
   sections: QuestionnaireSection[];
   answers: Record<string, string>;
-  status: "pending" | "in-progress" | "submitted";
+  status: "draft" | "pending" | "in-progress" | "submitted";
   sentAt: string;
+  savedAt?: string;
   updatedAt?: string;
 };
 
@@ -139,6 +140,7 @@ export type PlannerEvent = {
   milestoneTemplateId?: string;
   assignedTeamMember?: string;
   priority?: "highest" | "high" | "standard" | "low";
+  tier?: "standard" | "premium";
   description: string;
   image: string;
   createdAt: string;
@@ -148,6 +150,7 @@ export type PlannerEvent = {
   noteEntries?: EventNote[];
   fileFolders?: EventFileFolder[];
   fileEntries?: EventFileRecord[];
+  fileOverrides?: Record<string, EventFileOverride>;
   questionnaires?: SentQuestionnaire[];
   taskGroups?: EventTaskGroup[];
   budgetProposals?: BudgetProposal[];
@@ -156,7 +159,7 @@ export type PlannerEvent = {
   sections: EventSections;
 };
 
-export type NewPlannerEvent = Pick<PlannerEvent, "name" | "type" | "date" | "startTime" | "endTime" | "location" | "clientName" | "guestCount" | "budget" | "description" | "image"> & Pick<PlannerEvent, "city" | "currency" | "timeZone" | "clientId" | "budgetTemplateId" | "targetBudget" | "milestoneTemplateId" | "assignedTeamMember" | "priority">;
+export type NewPlannerEvent = Pick<PlannerEvent, "name" | "type" | "date" | "startTime" | "endTime" | "location" | "clientName" | "guestCount" | "budget" | "description" | "image"> & Pick<PlannerEvent, "city" | "currency" | "timeZone" | "clientId" | "budgetTemplateId" | "targetBudget" | "milestoneTemplateId" | "assignedTeamMember" | "priority" | "tier">;
 
 export const eventCovers = [
   { src: "/images/auth/nigerian-wedding-party.jpg", label: "Celebration" },
@@ -214,6 +217,10 @@ function writeEvents(events: readonly PlannerEvent[]) {
 
 export function usePlannerEvents() {
   return useSyncExternalStore(subscribe, readEvents, () => emptyEvents);
+}
+
+export function getPlannerEventById(id: string) {
+  return readEvents().find((event) => event.id === id);
 }
 
 export function addGuestMilestoneToExistingEvents() {
@@ -280,21 +287,46 @@ export function updatePlannerEvent(id: string, update: (event: PlannerEvent) => 
 }
 
 export const EVENT_QUESTIONNAIRE_LIMIT = 3;
+export const questionnaireLimitForEvent = (event: Pick<PlannerEvent, "tier">) => event.tier === "premium" ? EVENT_QUESTIONNAIRE_LIMIT : 1;
 
-export function assertPlannerQuestionnaireSlot(eventId: string) {
+function questionnaireLimitMessage(event: PlannerEvent, action: "sending" | "saving") {
+  return event.tier === "premium"
+    ? `All three questionnaire slots are filled. Remove a questionnaire before ${action} another.`
+    : `Standard events include one questionnaire. Upgrade to Premium before ${action} another.`;
+}
+
+export function assertPlannerQuestionnaireSlot(eventId: string, draftId?: string) {
   const event = readEvents().find((item) => item.id === eventId);
   if (!event) throw new Error("This event no longer exists.");
   if (isEventCancelled(event)) throw new Error("Reopen this event before sending a questionnaire.");
-  if ((event.questionnaires ?? []).length >= EVENT_QUESTIONNAIRE_LIMIT) throw new Error("All three questionnaire slots are filled. Remove a questionnaire before sending another.");
+  if (draftId && (event.questionnaires ?? []).some((item) => item.id === draftId && item.status === "draft")) return;
+  if ((event.questionnaires ?? []).length >= questionnaireLimitForEvent(event)) throw new Error(questionnaireLimitMessage(event, "sending"));
+}
+
+export function savePlannerQuestionnaireDraft(eventId: string, draft: SentQuestionnaire) {
+  let found = false;
+  updatePlannerEvent(eventId, (event) => {
+    found = true;
+    if (isEventCancelled(event)) throw new Error("Reopen this event before saving a questionnaire.");
+    if (draft.status !== "draft") throw new Error("Only a questionnaire draft can be saved here.");
+    const existing = (event.questionnaires ?? []).find((item) => item.id === draft.id);
+    if (existing && existing.status !== "draft") throw new Error("This questionnaire has already been sent.");
+    if (!existing && (event.questionnaires ?? []).length >= questionnaireLimitForEvent(event)) throw new Error(questionnaireLimitMessage(event, "saving"));
+    return { ...event, questionnaires: existing ? (event.questionnaires ?? []).map((item) => item.id === draft.id ? draft : item) : [...(event.questionnaires ?? []), draft] };
+  });
+  if (!found) throw new Error("This event no longer exists.");
 }
 
 export function sendPlannerQuestionnaire(eventId: string, request: SentQuestionnaire) {
   let found = false;
   updatePlannerEvent(eventId, (event) => {
     found = true;
-    if ((event.questionnaires ?? []).some((item) => item.id === request.id)) return event;
+    if (request.status !== "pending") throw new Error("Only a ready questionnaire can be sent.");
+    const existing = (event.questionnaires ?? []).find((item) => item.id === request.id);
+    if (existing && existing.status !== "draft") return event;
     if (isEventCancelled(event)) throw new Error("Reopen this event before sending a questionnaire.");
-    if ((event.questionnaires ?? []).length >= EVENT_QUESTIONNAIRE_LIMIT) throw new Error("All three questionnaire slots are filled. Remove a questionnaire before sending another.");
+    if (existing) return { ...event, questionnaires: (event.questionnaires ?? []).map((item) => item.id === request.id ? request : item) };
+    if ((event.questionnaires ?? []).length >= questionnaireLimitForEvent(event)) throw new Error(questionnaireLimitMessage(event, "sending"));
     return { ...event, questionnaires: [...(event.questionnaires ?? []), request] };
   });
   if (!found) throw new Error("This event no longer exists.");

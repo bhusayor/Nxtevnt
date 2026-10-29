@@ -29,6 +29,9 @@ export type CreditUsage = {
   eventName: string;
   usedAt: string;
   purchaseId: string | null;
+  count?: number;
+  kind?: "create" | "upgrade";
+  allocations?: { purchaseId: string | null; count: number }[];
 };
 
 export type CreditWallet = {
@@ -119,20 +122,35 @@ export function completeDemoCreditPurchase(packId: CreditPackId) {
   return purchase;
 }
 
-export function spendCreditForEvent(eventId: string, eventName: string) {
+export function spendCreditForEvent(eventId: string, eventName: string, count = 1, kind: "create" | "upgrade" = "create") {
+  if (!Number.isSafeInteger(count) || count < 1) throw new Error("Choose a valid credit cost.");
   const wallet = readWallet();
   const now = Date.now();
   const eligible = [...wallet.purchases]
     .filter((purchase) => purchase.remaining > 0 && Date.parse(purchase.expiresAt) > now)
-    .sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt))[0];
-  if (!eligible && wallet.legacyBalance < 1) return null;
+    .sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt));
+  let needed = count;
+  const allocations: { purchaseId: string | null; count: number }[] = [];
+  for (const purchase of eligible) {
+    const used = Math.min(needed, purchase.remaining);
+    if (used > 0) allocations.push({ purchaseId: purchase.id, count: used });
+    needed -= used;
+    if (!needed) break;
+  }
+  if (needed > 0 && wallet.legacyBalance > 0) {
+    const used = Math.min(needed, wallet.legacyBalance);
+    allocations.push({ purchaseId: null, count: used });
+    needed -= used;
+  }
+  if (needed > 0) return null;
   const usage: CreditUsage = {
     id: crypto.randomUUID(), eventId, eventName: eventName.trim(), usedAt: new Date(now).toISOString(),
-    purchaseId: eligible?.id ?? null,
+    purchaseId: allocations[0].purchaseId, count, kind, allocations,
   };
+  const usedByPurchase = new Map(allocations.filter((entry) => entry.purchaseId).map((entry) => [entry.purchaseId, entry.count]));
   writeWallet({
-    legacyBalance: eligible ? wallet.legacyBalance : wallet.legacyBalance - 1,
-    purchases: eligible ? wallet.purchases.map((purchase) => purchase.id === eligible.id ? { ...purchase, remaining: purchase.remaining - 1 } : purchase) : wallet.purchases,
+    legacyBalance: wallet.legacyBalance - (allocations.find((entry) => entry.purchaseId === null)?.count ?? 0),
+    purchases: wallet.purchases.map((purchase) => ({ ...purchase, remaining: purchase.remaining - (usedByPurchase.get(purchase.id) ?? 0) })),
     usages: [usage, ...wallet.usages],
   });
   return usage;
@@ -142,9 +160,11 @@ export function refundCreditUse(usageId: string) {
   const wallet = readWallet();
   const usage = wallet.usages.find((item) => item.id === usageId);
   if (!usage) return;
+  const allocations = usage.allocations?.length ? usage.allocations : [{ purchaseId: usage.purchaseId, count: 1 }];
+  const restoredByPurchase = new Map(allocations.filter((entry) => entry.purchaseId).map((entry) => [entry.purchaseId, entry.count]));
   writeWallet({
-    legacyBalance: usage.purchaseId ? wallet.legacyBalance : wallet.legacyBalance + 1,
-    purchases: usage.purchaseId ? wallet.purchases.map((purchase) => purchase.id === usage.purchaseId ? { ...purchase, remaining: purchase.remaining + 1 } : purchase) : wallet.purchases,
+    legacyBalance: wallet.legacyBalance + (allocations.find((entry) => entry.purchaseId === null)?.count ?? 0),
+    purchases: wallet.purchases.map((purchase) => ({ ...purchase, remaining: purchase.remaining + (restoredByPurchase.get(purchase.id) ?? 0) })),
     usages: wallet.usages.filter((item) => item.id !== usageId),
   });
 }

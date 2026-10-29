@@ -22,19 +22,26 @@ const { DashboardEventCard, asDashboardEvent } = require('../src/components/plan
 const { PlannerProfileCard } = require('../src/components/planner/planner-profile.tsx');
 const { AttentionQueue } = require('../src/components/planner/attention-queue.tsx');
 const { AttentionActionRow } = require('../src/components/planner/attention-action-row.tsx');
+const { InquiryList } = require('../src/components/planner/inquiry-list.tsx');
+const { AttentionDateFilter } = require('../src/components/planner/attention-date-filter.tsx');
 const { attentionExamples } = require('../src/components/planner/attention-queue-items.ts');
 const { AttentionListDialog, VendorReplyDialog } = require('../src/components/planner/attention-list-dialog.tsx');
 const today = localEventToday(), day = offset => { const date = new Date(`${today}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
 const event = (id, count = 6) => ({ id, name: `Event ${id}`, type: 'Wedding', date: day(3), startTime: '12:00', endTime: '16:00', timeZone: 'Africa/Lagos', city: 'Example City', location: 'Private venue name', image: '/example.jpg', clientName: '', currency: 'NGN', budget: '', description: '', guestCount: '', createdAt: new Date().toISOString(), notes: '', sections: { tasks: Array.from({ length: count }, (_, i) => ({ id: `${id}-task-${i}`, title: `Task ${i}`, status: 'todo', dueDate: day(i - 1) })), expenses: [], proposal: [], moodboard: [], agenda: [], decisions: [], files: [] } });
 events = [event('a'), event('b', 2), { ...event('cancelled'), cancelledAt: new Date().toISOString() }];
 const snapshot = JSON.stringify(events[0]), card = asDashboardEvent(events[0]);
+assert.equal(asDashboardEvent({ ...events[0], tier: 'premium' }).tier, 'premium', 'The Events card preserves the per-event tier');
 assert.equal(card.nextTaskId, 'a-task-0'); assert.equal(card.nextTaskOverdue, true); assert.equal(card.dateISO, day(3)); assert.equal(card.weatherCity, 'Example City'); assert(!card.weatherCity.includes('Private venue')); assert.equal(JSON.stringify(events[0]), snapshot);
 const markup = renderToStaticMarkup(React.createElement(DashboardEventCard, { event: card }));
+assert(markup.includes('Standard') && markup.includes('Upgrade') && markup.includes('data-icon="Crown"'), 'Standard Events cards show the crowned upgrade chip');
+assert(markup.includes('absolute top-4 right-4 z-20'), 'Tier and status sit together over the event image');
+const premiumCard = renderToStaticMarkup(React.createElement(DashboardEventCard, { event: asDashboardEvent({ ...events[0], tier: 'premium' }) }));
+assert(premiumCard.includes('Premium event') && !premiumCard.includes('Standard'), 'Premium Events cards read apart at a glance');
 assert(markup.includes('Open event')); assert(markup.includes('section=tasks&amp;action=add-task')); assert(markup.includes('section=notes&amp;action=write')); assert(markup.includes('Overdue')); assert(markup.includes('text-error')); assert(markup.indexOf('Next task') < markup.indexOf('Actions for'));
 const complete = asDashboardEvent({ ...events[0], sections: { ...events[0].sections, tasks: [{ id: 'done', title: 'Done', status: 'completed' }] } }); assert.equal(complete.tasksComplete, true); assert(!complete.nextTaskId);
 const cancelledCard = renderToStaticMarkup(React.createElement(DashboardEventCard, { event: asDashboardEvent(events[2]) })); assert(!cancelledCard.includes('section=tasks&amp;action=add-task'));
-assert.deepEqual(overviewEventTypes.map(type => type.label), ['Wedding', 'Corporate', 'Party', 'Mixed', 'Other']); assert.deepEqual(overviewEventTypes.map(type => type.color), ['#10b981', '#2dbcf0', '#ff8b2d', '#7c3aed', '#9ca3af']);
-for (const [value, key] of [['White wedding', 'wedding'], ['Conference', 'corporate'], ['Private party', 'party'], ['Corporate & Wedding', 'mixed'], ['Mixed', 'mixed'], ['Unrecognized', 'other']]) assert.equal(overviewEventType(value).key, key);
+assert.deepEqual(overviewEventTypes.map(type => type.label), ['Wedding', 'Corporate', 'Party', 'Other']); assert.deepEqual(overviewEventTypes.map(type => type.color), ['#10b981', '#2dbcf0', '#ff8b2d', '#9ca3af']);
+for (const [value, key] of [['White wedding', 'wedding'], ['Conference', 'corporate'], ['Private party', 'party'], ['Corporate & Wedding', 'other'], ['Mixed', 'other'], ['Unrecognized', 'other']]) assert.equal(overviewEventType(value).key, key);
 profile = { ...samplePlannerProfile, slug: 'example-events', reviews: [] };
 assert(renderToStaticMarkup(React.createElement(PlannerProfileCard)).includes('No reviews yet'));
 profile = { ...profile, reviews: [{ id: '1', rating: 5 }, { id: '2', rating: 4 }, { id: 'bad', rating: NaN }] };
@@ -57,6 +64,18 @@ async function run() {
   assert(draw().find(node => node.type === 'section').props.className.includes('h-[680px]'), 'Card stays bounded instead of growing with the full list');
   assert(draw().find(node => node.type === 'section').props.className.includes('min-h-0'), 'Grid content cannot force the card taller than its height');
   assert(!/Showing 4|next four/.test(text(draw())));
+  draw().find(n => n.type === AttentionDateFilter).props.onPreset('today');
+  assert.equal(draw().filter(n => n.type === AttentionActionRow).length, 2, 'Task date filter uses due dates');
+  draw().find(n => n.props['aria-label'] === 'See all upcoming tasks').props.onClick();
+  assert.equal(draw().find(n => n.type === AttentionListDialog).props.items.length, 2, 'See all shares the date filter');
+  draw().find(n => n.type === AttentionListDialog).props.onClose();
+  draw().find(n => n.type === AttentionDateFilter).props.onPreset('custom');
+  draw().find(n => n.props['aria-label'] === 'Attention start date').props.onChange({target:{value:day(2)}});
+  draw().find(n => n.props['aria-label'] === 'Attention end date').props.onChange({target:{value:day(3)}});
+  assert.equal(draw().filter(n => n.type === AttentionActionRow).length, 2);
+  draw().find(n => n.props['aria-label'] === 'Attention end date').props.onChange({target:{value:day(-2)}});
+  assert.equal(draw().filter(n => n.type === AttentionActionRow).length, 0); assert(draw().some(n => n.props.role === 'alert'));
+  draw().find(n => n.type === AttentionDateFilter).props.onPreset('all');
   for (const node of draw().filter(node => node.type === AttentionActionRow)) {
     const html = renderToStaticMarkup(React.createElement(AttentionActionRow, node.props));
     assert(html.includes('View task')); assert(!html.includes('type="checkbox"')); assert(!html.includes('Mark complete:')); assert(!/>Complete</.test(html));
@@ -73,12 +92,21 @@ async function run() {
   for (const tab of ['payments', 'inquiries', 'vendors', 'tasks']) { draw().find(node => node.props.id === `attention-${tab}`).props.onClick(); assert(draw().some(node => node.type === 'button' && /^See all /.test(node.props['aria-label'] || ''))); }
   draw().find(node => node.props.id === 'attention-vendors').props.onClick(); const vendorRows = draw().filter(node => node.type === AttentionActionRow); assert.equal(vendorRows.length, 1); assert.equal(vendorRows[0].props.item.id, 'one'); vendorRows[0].props.onOpen(vendorRows[0].props.item); draw().find(node => node.type === VendorReplyDialog).props.onRead(); assert.deepEqual(readIds, ['one']);
   draw().find(node => node.props.ariaLabel === 'Filter attention by event').props.onValueChange('all'); assert.equal(draw().filter(node => node.type === AttentionActionRow).length, 2); assert(!draw().some(node => node.type === 'input' && ['date', 'month'].includes(node.props.type)));
-  replies = []; assert.equal(draw().filter(node => node.type === AttentionActionRow).length, 0); assert(draw().some(node => text(node).includes('messaging feed is connected')));
+  replies = []; const exampleVendorRows = draw().filter(node => node.type === AttentionActionRow); assert.equal(exampleVendorRows.length, 1); assert.equal(exampleVendorRows[0].props.item.vendorReply.vendor, 'Bloomhouse NG'); assert(!/demo|team preview/i.test(text(draw())));
   for (const tab of ['payments', 'inquiries']) {
     draw().find(node => node.props.id === `attention-${tab}`).props.onClick();
     assert(!/sample|demo|examples only|preview only/i.test(text(draw())));
+    assert(!draw().some(node => node.type === 'button' && ['Hide items', 'Show items', 'Reset'].includes(text(node))), 'No item-management footer strip');
     for (const item of attentionExamples(today)[tab]) assert(!/sample|demo/i.test(`${item.title} ${item.context} ${item.detail}`));
   }
+  slots = [];
+  inquiries = [{ id: 'old-client', name: 'Client', subject: 'Old client inquiry', createdAt: '2020-01-01T09:00:00Z', status: 'open', eventId: 'cancelled' }, { id: 'vendor', name: 'Vendor', senderType: 'vendor', subject: 'Vendor inquiry', createdAt: '2024-01-01T09:00:00Z', status: 'open' }, { id: 'closed', name: 'Closed', subject: 'Closed inquiry', createdAt: '2026-01-01T09:00:00Z', status: 'closed' }];
+  const inbox = () => { cursor = 0; return walk(AttentionQueue({ inquiriesOnly: true })); };
+  assert.equal(inbox().find(n => n.type === InquiryList).props.items.length, 2, 'Inbox matches the all-open count regardless of age or event state');
+  assert.equal(inbox().filter(n => n.props.role === 'tab').length, 0);
+  assert(inbox().find(n => n.type === InquiryList).props.items.some(item => item.context === 'Vendor · Vendor'));
+  inquiries = []; assert.equal(inbox().filter(n => n.type === AttentionActionRow).length, 0, 'Do not inject examples into the inbox');
+  assert(!inbox().some(n => n.type === 'button' && text(n) === 'Show items'));
   let copied; global.window = { location: { origin: 'https://example.test' }, localStorage: { getItem() { return null; } } }; Object.defineProperty(global, 'navigator', { configurable: true, value: { clipboard: { writeText: async value => { copied = value; } } } });
   slots = []; const profileDraw = () => { cursor = 0; return walk(PlannerProfileCard()); };
   await profileDraw().find(node => text(node) === 'Copy profile link' && node.props.onClick).props.onClick(); await flush(); assert.equal(copied, 'https://example.test/planners/example-events'); assert(profileDraw().some(node => text(node) === 'Profile link copied'));
@@ -86,6 +114,6 @@ async function run() {
   const taskSource = fs.readFileSync(path.join(root, 'src/components/planner/task-workspace.tsx'), 'utf8'); assert(taskSource.includes('initialAction === "add-task"')); assert(taskSource.includes('onActionConsumed'));
   const storage = new Map(); let fail = false; window.localStorage = { getItem: key => storage.get(key) || null, setItem(key, value) { if (fail) throw Error('Storage full'); storage.set(key, value); } }; window.dispatchEvent = () => {};
   const store = require('../src/lib/planner-vendor-replies.ts'); storage.set(store.vendorReplyStorageKey, JSON.stringify([reply('record', 'a'), { id: 'invalid' }])); assert.equal(store.usePlannerVendorReplies().length, 1); const originalData = storage.get(store.vendorReplyStorageKey); fail = true; assert.throws(() => store.markVendorReplyRead('record'), /Storage full/); assert.equal(storage.get(store.vendorReplyStorageKey), originalData); fail = false; store.markVendorReplyRead('record'); assert.equal(store.usePlannerVendorReplies()[0].status, 'read');
-  console.log('PASS: overdue next-task strip and quick actions; four attention tabs; filtered See all lists; no date-range control; cancelled-event isolation; honest vendor empty state and read action; real review averages; profile clipboard success/failure; five event colours and immutable source records. Fixtures only.');
+  console.log('PASS: overview quick actions; four attention tabs; date/event-filtered See all lists; cancelled-event isolation; vendor read action; real review averages; profile clipboard failures and immutable source records. Fixtures only.');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

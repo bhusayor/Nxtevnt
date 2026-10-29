@@ -1,8 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { BudgetAttachment } from "./planner-budget";
 
-export type PlannerVendorReply = { id: string; eventId: string; vendor: string; subject: string; message: string; createdAt: string; status: "unread" | "read" };
+export type PlannerVendorReply = {
+  id: string; eventId: string; vendor: string; subject: string; message: string; createdAt: string; status: "unread" | "read";
+  category?: string; receivedVia?: string; requestedEventDate?: string; requestedService?: string; originalRequest?: string;
+  acceptedRequest?: boolean; quotedAmount?: number; attachments?: BudgetAttachment[]; email?: string; phone?: string;
+};
 export const vendorReplyStorageKey = "nxtevnt.planner.vendor-replies.v1";
 const changed = "nxtevnt:vendor-replies-changed", empty: readonly PlannerVendorReply[] = [];
 let raw: string | null | undefined, cached = empty;
@@ -14,7 +19,7 @@ function read() {
   return cached;
 }
 function subscribe(callback: () => void) { window.addEventListener("storage", callback); window.addEventListener(changed, callback); return () => { window.removeEventListener("storage", callback); window.removeEventListener(changed, callback); }; }
-// Empty until the vendor messaging feed is connected; never manufacture replies.
+// The store contains received replies only; the overview may show a separate example when empty.
 export function usePlannerVendorReplies() { return useSyncExternalStore(subscribe, read, () => empty); }
 export function markVendorReplyRead(id: string) {
   const replies = read(); if (!replies.some((item) => item.id === id)) throw Error("This reply is no longer available.");

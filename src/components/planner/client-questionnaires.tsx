@@ -49,7 +49,7 @@ function ClientQuestionnaireForm({ event, questionnaire }: { event: PlannerEvent
 export function ClientQuestionnaires() {
   const events = usePlannerEvents();
   const ready = useBrowserReady();
-  const requests = events.flatMap((event) => (event.questionnaires ?? []).map((questionnaire) => ({ event, questionnaire }))).sort((a, b) => b.questionnaire.sentAt.localeCompare(a.questionnaire.sentAt));
+  const requests = events.flatMap((event) => (event.questionnaires ?? []).filter((questionnaire) => questionnaire.status !== "draft").map((questionnaire) => ({ event, questionnaire }))).sort((a, b) => b.questionnaire.sentAt.localeCompare(a.questionnaire.sentAt));
   const [selectedId, setSelectedId] = useState("");
   const selected = requests.find(({ questionnaire }) => questionnaire.id === selectedId);
 

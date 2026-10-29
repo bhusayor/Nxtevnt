@@ -7,6 +7,7 @@ export function workspaceSection(value?: string): WorkspaceSection {
 }
 
 export function budgetWorkspaceTab(section?: string, tab?: string) {
+  if (tab === "bookings" || tab === "payments") return tab;
   if (tab === "proposals" || tab === "proposal") return "proposals";
   if (tab === "budget" || section === "budget") return "budget";
   return section === "proposal" ? "proposals" : "budget";

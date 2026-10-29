@@ -73,6 +73,9 @@ try {
   nodes = render(EventOverviewPanel, props);
   assert.equal(nodes.find(n => n.type === EventClientDetails).props.client.id, client.id, 'Client ID takes precedence over same-name records');
   const coverSection = nodes.find(n => n.props?.['aria-label'] === 'Event details');
+  assert(!walk(coverSection).some(n => n.type === 'h1'), 'Event title belongs above the tabs, not inside the overview card');
+  assert(walk(coverSection.props.children[0]).some(n => n.props?.['aria-label'] === `Open full photo for ${event.name}`), 'Cover is first on desktop and mobile');
+  assert(!text(coverSection).includes('Africa/Lagos'), 'Time-zone setting is not displayed on the overview card');
   const countdown = walk(coverSection).find(n => n.props?.['aria-label'] === 'Event countdown');
   assert(text(countdown).includes('36')); assert(text(countdown).includes('days')); assert(countdown.props.className.includes('absolute'));
   assert(walk(coverSection).some(n => n.type === EventCoverEditor));
@@ -87,6 +90,12 @@ try {
   assert.equal(decisionPaymentRow.props.children[1].type, stubs.EventUpcomingPayments);
   const planningNodes = walk(planning);
   assert.equal(planningNodes.filter(n => n.type === stubs.OverviewMetricCard).length, 4);
+  assert.deepEqual(planningNodes.filter(n => n.type === stubs.OverviewMetricCard).map(n => [n.props.label, n.props.href]), [
+    ['Tasks complete', '/planner/events/fixture?section=tasks'],
+    ['Estimated budget', '/planner/events/fixture?section=budget'],
+    ['Vendor bookings', '/planner/events/fixture?section=budget&tab=bookings'],
+    ['Open decisions', '/planner/events/fixture?section=decisions'],
+  ]);
   assert(planningNodes.findIndex(n => n.type === 'h2') < planningNodes.findIndex(n => n.type === stubs.OverviewMetricCard));
   assert(text(planning).includes('Your planning at a glance'));
   for (const [date, expected] of [['2026-10-22', 'It’s event day'], ['2026-10-21', 'Event day passed']]) {
@@ -102,5 +111,15 @@ try {
   render(EventOverviewPanel, taskProps).find(n => n.props?.['aria-label'] === 'Mark complete: Confirm venue').props.onChange();
   assert(render(EventOverviewPanel, taskProps).some(n => n.props?.role === 'alert'));
   assert(render(EventOverviewPanel, { ...taskProps, event: { ...taskProps.event, cancelledAt: '2026-10-22' } }).find(n => n.props?.['aria-label'] === 'Mark complete: Confirm venue').props.disabled);
+  const openedTasks = [];
+  const manyTasks = Array.from({ length: 5 }, (_, index) => ({ id: `next-${index}`, title: `Next task ${index}`, dueDate: `2099-01-0${index + 1}`, status: 'todo' }));
+  const listProps = { ...props, onOpenTasks: id => openedTasks.push(id), event: { ...event, sections: { tasks: [...manyTasks, { id: 'done', title: 'Already done', done: true }] } } };
+  nodes = render(EventOverviewPanel, listProps);
+  assert(nodes.some(n => n.type === 'h2' && text(n) === 'Next 3 tasks'));
+  const taskRows = nodes.filter(n => n.type === 'button' && n.props['aria-label']?.startsWith('Open task:'));
+  assert.equal(taskRows.length, 3);
+  taskRows.forEach(n => n.props.onClick());
+  assert.deepEqual(openedTasks, ['next-0', 'next-1', 'next-2']);
+  assert.equal(completedTasks.length, 1, 'Opening task rows never completes them');
 } finally { React.useState = originalState; React.useEffect = originalEffect; Module._load = load; }
 console.log('PASS: cover countdown and date states; camera editor draft/save/error; client phone/email display and validation; legacy contact persistence; linked-client precedence; planning heading above all four cards. Isolated fixtures only.');

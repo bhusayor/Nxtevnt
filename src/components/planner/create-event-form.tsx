@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, CreditCard, ImageIcon, MapPin, Plus, UserRound, UsersRound, Wallet, type PhosphorIcon } from "@/components/ui/icons";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleCheck, Clock3, CreditCard, Crown, ImageIcon, MapPin, Plus, UserRound, UsersRound, Wallet, type PhosphorIcon } from "@/components/ui/icons";
 
 import { CoverPicker } from "@/components/planner/cover-picker";
 import { AdvancedSection, CreateEventAdvanced } from "@/components/planner/create-event-advanced";
@@ -25,8 +25,21 @@ import { createPlannerEvent, eventCovers, formatEventDate, isCustomCover, useBro
 const initial: NewPlannerEvent = {
   name: "", type: "", date: "", startTime: "", endTime: "", location: "", city: "", currency: "NGN", timeZone: "Africa/Lagos", clientId: "",
   clientName: "", guestCount: "", budget: "", description: "", image: eventCovers[0].src,
-  budgetTemplateId: "", targetBudget: "", milestoneTemplateId: "", assignedTeamMember: "", priority: "standard",
+  budgetTemplateId: "", targetBudget: "", milestoneTemplateId: "", assignedTeamMember: "", priority: "standard", tier: "standard",
 };
+
+const draftKey = "nxtevnt.planner.create-event-draft.v1";
+type CreateEventDraft = { values: NewPlannerEvent; otherType: string; step: 1 | 2; creatingClient: boolean; newClientName: string; newClientEmail: string };
+function readDraft(): CreateEventDraft | null {
+  try {
+    const parsed: unknown = JSON.parse(window.sessionStorage.getItem(draftKey) || "null");
+    if (!parsed || typeof parsed !== "object" || !("values" in parsed) || !parsed.values || typeof parsed.values !== "object") return null;
+    const draft = parsed as Partial<CreateEventDraft>;
+    if (typeof draft.values?.name !== "string" || typeof draft.values.date !== "string") return null;
+    return { values: { ...initial, ...draft.values, tier: draft.values.tier === "premium" ? "premium" : "standard" }, otherType: typeof draft.otherType === "string" ? draft.otherType : "", step: draft.step === 2 ? 2 : 1, creatingClient: Boolean(draft.creatingClient), newClientName: typeof draft.newClientName === "string" ? draft.newClientName : "", newClientEmail: typeof draft.newClientEmail === "string" ? draft.newClientEmail : "" };
+  } catch { return null; }
+}
+function clearDraft() { try { window.sessionStorage.removeItem(draftKey); } catch { /* Browsers can disable session storage. */ } }
 
 type EssentialField = "name" | "type" | "otherType" | "date" | "city";
 
@@ -51,6 +64,27 @@ export function CreateEventForm() {
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
   const [clientError, setClientError] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    const draft = readDraft();
+    if (draft) {
+      // Restoring a saved form after the credits route is a one-time browser-state sync.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setValues(draft.values);
+      setOtherType(draft.otherType); setStep(draft.step); setCreatingClient(draft.creatingClient);
+      setNewClientName(draft.newClientName); setNewClientEmail(draft.newClientEmail);
+    }
+    setDraftReady(true);
+  }, []);
+  useEffect(() => {
+    if (!draftReady) return;
+    try { window.sessionStorage.setItem(draftKey, JSON.stringify({ values, otherType, step, creatingClient, newClientName, newClientEmail } satisfies CreateEventDraft)); }
+    catch { /* The form remains usable if session storage is unavailable. */ }
+  }, [draftReady, values, otherType, step, creatingClient, newClientName, newClientEmail]);
+  const requiredCredits = values.tier === "premium" ? 2 : 1;
+  const creditWord = requiredCredits === 1 ? "credit" : "credits";
+  const clientChoices = values.clientId && values.clientName && !clients.some(client => client.id === values.clientId)
+    ? [...clients, { id: values.clientId, name: values.clientName }] : clients;
   const selectedBudgetTemplate = budgetTemplates.find((template) => template.id === values.budgetTemplateId);
   const estimatedRows = values.currency === "NGN" && selectedBudgetTemplate ? estimateBudget(selectedBudgetTemplate, Number(values.guestCount) || selectedBudgetTemplate.baselineGuests) : null;
   const estimatedBudget = estimatedRows ? estimatedRows.reduce((sum, item) => sum + item.amount, 0) : null;
@@ -58,6 +92,28 @@ export function CreateEventForm() {
   function setField<K extends keyof NewPlannerEvent>(field: K, value: NewPlannerEvent[K]) {
     setValues((current) => ({ ...current, [field]: value }));
     if (field in errors) setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  function selectClient(value: string) {
+    if (value === "new") { setClientError(""); setCreatingClient(true); return; }
+    const client = clientChoices.find(entry => entry.id === value);
+    // The Select's hidden form control can emit an empty value while options refresh.
+    // Only the explicit No client yet option clears the selection.
+    if (value !== "none" && !client) return;
+    setValues(current => ({ ...current, clientId: client?.id || "", clientName: client?.name || "" }));
+    setCreatingClient(false);
+    setClientError("");
+  }
+
+  function saveClient() {
+    try {
+      const client = addPlannerClient(newClientName, newClientEmail);
+      setValues(current => ({ ...current, clientId: client.id, clientName: client.name }));
+      setCreatingClient(false);
+      setNewClientName("");
+      setNewClientEmail("");
+      setClientError("");
+    } catch (error) { setClientError(error instanceof Error ? error.message : "Couldn’t save this client."); }
   }
 
   function validateEssentials() {
@@ -77,7 +133,7 @@ export function CreateEventForm() {
   function saveEvent() {
     if (!validateEssentials()) { setStep(1); return; }
     if (creatingClient) { setClientError("Save this client or cancel before creating the event."); return; }
-    if (getCreditBalance() < 1) { setSaveError("You need one credit to create an event. Purchase credits to continue."); return; }
+    if (getCreditBalance() < requiredCredits) { setSaveError(`You need ${requiredCredits} ${creditWord} to create this event. Purchase credits to continue.`); return; }
     if (values.startTime && values.endTime && values.endTime <= values.startTime) {
       setSaveError("The end time should be later than the start time.");
       return;
@@ -88,8 +144,8 @@ export function CreateEventForm() {
     let eventSaved = false;
     try {
       const eventId = crypto.randomUUID();
-      usage = spendCreditForEvent(eventId, values.name);
-      if (!usage) { setSaveError("You need one credit to create an event."); setSaving(false); return; }
+      usage = spendCreditForEvent(eventId, values.name, requiredCredits);
+      if (!usage) { setSaveError(`You need ${requiredCredits} ${creditWord} to create this event.`); setSaving(false); return; }
       const milestoneTemplate = milestoneTemplates.find((template) => template.id === values.milestoneTemplateId);
       const taskGroups = milestoneTemplate?.milestones.map((milestone) => ({
         id: crypto.randomUUID(), title: milestone.title, description: milestone.description,
@@ -113,6 +169,7 @@ export function CreateEventForm() {
         assignedTeamMember: values.assignedTeamMember?.trim(),
       }, eventId, initialTasks, taskGroups);
       eventSaved = true;
+      clearDraft();
       if (estimatedRows) {
         const groups: BudgetGroup[] = [...new Set(estimatedRows.map((row) => row.group))].map((name) => ({ id: crypto.randomUUID(), name, eventId, currency: values.currency || "NGN", createdAt: created.createdAt }));
         const items: BudgetItem[] = estimatedRows.map((row) => ({ id: crypto.randomUUID(), groupId: groups.find((group) => group.name === row.group)!.id, eventId, name: row.name, vendor: "", vendorStatus: "not-sourced", currency: values.currency || "NGN", budgeted: row.amount, invoiced: 0, paid: 0, paymentDate: "", notes: "Starting estimate from the selected template. Adjust as quotes arrive.", status: "not-started", installments: [], attachments: [], createdAt: created.createdAt }));
@@ -128,18 +185,19 @@ export function CreateEventForm() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (step === 1) {
-      if (getCreditBalance() < 1) { setSaveError("You need one credit to continue. Purchase a credit to create this event."); return; }
-      if (validateEssentials()) { setStep(2); setSaveError(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
-    } else saveEvent();
+    saveEvent();
+  }
+
+  function openAdvancedDetails() {
+    if (validateEssentials()) { setStep(2); setSaveError(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
   }
 
   return (
     <div className="mx-auto w-full max-w-[1280px] pb-8">
       <Link href="/planner/events" className="inline-flex min-h-10 items-center gap-2 text-xs font-semibold text-text-secondary transition-colors hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All events</Link>
       <div className="mt-3"><p className="mb-2 text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-brand-primary">Planner workspace / New event</p><h1 className="text-[1.75rem] font-semibold tracking-[-0.045em] text-text-primary sm:text-[2rem]">Let&apos;s bring it to life.</h1><p className="mt-2 text-sm text-text-secondary">Start with the essentials. You can refine every detail later.</p></div>
-      {ready && credits < 1 && <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-[#efd6bd] bg-[#fff8ed] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-5" role="alert">
-        <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#a66c36] shadow-sm"><CreditCard className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-sm font-semibold leading-5 text-text-primary">You’re out of event credits</p><p className="mt-1 text-xs leading-5 text-text-secondary">Fill in the essentials now. You’ll need 1 credit to continue and create this event.</p></div></div>
+      {ready && credits < requiredCredits && <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-[#efd6bd] bg-[#fff8ed] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-5" role="alert">
+        <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#a66c36] shadow-sm"><CreditCard className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-sm font-semibold leading-5 text-text-primary">{credits === 0 ? "You’re out of event credits" : "You need one more credit"}</p><p className="mt-1 text-xs leading-5 text-text-secondary">Your {values.tier === "premium" ? "premium" : "standard"} event needs {requiredCredits} {creditWord}. Your form will be here when you return.</p></div></div>
         <Link href="/planner/credits?tab=buy" className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[#e9c9a5] bg-white px-4 text-xs font-semibold text-[#85572e] transition-colors hover:bg-[#fff3e2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a66c36] sm:w-auto">Buy credits <ArrowRight className="size-4" aria-hidden="true" /></Link>
       </div>}
       <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-8">
@@ -169,14 +227,9 @@ export function CreateEventForm() {
                     <Input id="event-city" label="City" placeholder="e.g. Lagos" required value={values.city || ""} onChange={(event) => setField("city", event.target.value)} error={errors.city} />
                     <Select id="event-currency" label="Event currency" required options={currencies.map((currency) => ({ label: currency.label, value: currency.code }))} value={values.currency || "NGN"} onValueChange={(value) => { setField("currency", value); if (value !== "NGN") setField("budgetTemplateId", ""); }} />
                   </div>
-                  <div className="grid items-start gap-5 sm:grid-cols-2">
-                    <Input id="event-location" label="Venue" placeholder="e.g. The Balmoral" helperText="You can confirm the venue later." optional value={values.location} onChange={(event) => setField("location", event.target.value)} />
-                    <div>
-                      <Input id="event-guests" label="Guest size" inputMode="numeric" placeholder="e.g. 150" optional value={values.guestCount || ""} onChange={(event) => { const digits = event.target.value.replace(/\D/g, ""); setField("guestCount", digits ? String(Math.min(100000, Number(digits))) : ""); }} />
-                      <div className="mt-2"><p className="text-[0.6875rem] font-medium text-text-tertiary">Quick guest sizes</p><div className="mt-1.5 flex flex-wrap gap-1.5">{guestSizes.map((size) => <button key={size} type="button" aria-pressed={values.guestCount === String(size)} onClick={() => setField("guestCount", values.guestCount === String(size) ? "" : String(size))} className={cn("min-h-8 rounded-full border px-3 text-[0.6875rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary", values.guestCount === String(size) ? "border-brand-primary bg-brand-primary text-white" : "border-border-subtle bg-white text-text-secondary hover:border-brand-primary hover:text-brand-primary")}>{size.toLocaleString("en-NG")}</button>)}</div></div>
-                    </div>
-                  </div>
                 </AdvancedSection>
+                <button type="button" role="switch" aria-checked={values.tier === "premium"} aria-label="Make a premium event" onClick={() => { setField("tier", values.tier === "premium" ? "standard" : "premium"); setSaveError(""); }} className={cn("flex w-full items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary sm:px-5", values.tier === "premium" ? "border-[#d9b978] bg-[#fffbf2]" : "border-border-subtle bg-[#fbfcfb] hover:border-[#d9b978] hover:bg-[#fffbf2]")}><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#f8e8bc] text-[#98712c]"><Crown className="size-5" weight="duotone" aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold text-text-primary">Make a premium event</span><span className="rounded-full bg-[#f8eccc] px-2 py-0.5 text-[0.6875rem] font-semibold text-[#825e20]">2 credits</span></span><span className="mt-1 block text-xs leading-5 text-text-secondary">More storage, proposals, questionnaires, mood boards and guest website options.</span></span><span aria-hidden="true" className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors", values.tier === "premium" ? "bg-brand-primary" : "bg-[#aebbb2]")}><span className={cn("absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform", values.tier === "premium" ? "translate-x-[1.375rem]" : "translate-x-0.5")} /></span></button>
+                <p className="text-xs leading-5 text-text-secondary"><span className="font-semibold text-text-primary">{ready ? credits.toLocaleString("en-NG") : "—"} {credits === 1 ? "credit" : "credits"} left.</span> Uses {requiredCredits} {creditWord} with {values.tier === "premium" ? "Premium" : "Standard"} event. Non-refundable once the event is created.</p>
               </div>
             ) : (
               <div className="space-y-7">
@@ -184,8 +237,15 @@ export function CreateEventForm() {
                 <AdvancedSection title="Event details" description="A little more about the day and who it’s for." icon={Clock3}>
                   <div className="grid gap-5 @min-[520px]/event-form:grid-cols-3"><EventTimePicker id="event-start-time" label="Start time" value={values.startTime} onChange={(time) => setField("startTime", time)} /><EventTimePicker id="event-end-time" label="End time" value={values.endTime} onChange={(time) => setField("endTime", time)} /><EventTimeZonePicker id="event-time-zone" value={values.timeZone || "Africa/Lagos"} onChange={(value) => setField("timeZone", value)} /></div>
                   <p className="-mt-2 text-xs text-text-tertiary">Both times use the selected local time zone.</p>
-                  <div className="space-y-3"><Select label="Client or host" placeholder="Choose an existing client" value={creatingClient ? "new" : values.clientId || "none"} options={[{ label: "No client yet", value: "none" }, ...clients.map((client) => ({ label: client.name, value: client.id })), { label: "+ Create a new client", value: "new" }]} onValueChange={(value) => { setClientError(""); if (value === "new") { setCreatingClient(true); return; } setCreatingClient(false); const client = clients.find((entry) => entry.id === value); setField("clientId", client?.id || ""); setField("clientName", client?.name || ""); }} />
-                    {creatingClient && <div className="rounded-xl border border-[#dce9df] bg-[#f7faf7] p-4"><p className="mb-3 text-xs font-semibold text-text-primary">New client</p><div className="grid gap-3 sm:grid-cols-2"><Input label="Client name" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="e.g. Ada Okoye" /><Input label="Email" optional type="email" value={newClientEmail} onChange={(event) => setNewClientEmail(event.target.value)} placeholder="ada@example.com" /></div>{clientError && <p role="alert" className="mt-2 text-xs text-error">{clientError}</p>}<div className="mt-3 flex gap-2"><Button type="button" size="sm" onClick={() => { try { const client = addPlannerClient(newClientName, newClientEmail); setField("clientId", client.id); setField("clientName", client.name); setCreatingClient(false); setNewClientName(""); setNewClientEmail(""); setClientError(""); } catch (error) { setClientError(error instanceof Error ? error.message : "Couldn’t save this client."); } }} leadingIcon={<Plus className="size-4" />}>Save client</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCreatingClient(false)}>Cancel</Button></div></div>}
+                  <div className="grid items-start gap-5 @min-[520px]/event-form:grid-cols-2">
+                    <Input id="event-location" label="Venue" placeholder="e.g. The Balmoral" helperText="You can confirm the venue later." optional value={values.location} onChange={(event) => setField("location", event.target.value)} />
+                    <div>
+                      <Input id="event-guests" label="Guest size" inputMode="numeric" placeholder="e.g. 150" optional value={values.guestCount || ""} onChange={(event) => { const digits = event.target.value.replace(/\D/g, ""); setField("guestCount", digits ? String(Math.min(100000, Number(digits))) : ""); }} />
+                      <div className="mt-2"><p className="text-[0.6875rem] font-medium text-text-tertiary">Quick guest sizes</p><div className="mt-1.5 flex flex-wrap gap-1.5">{guestSizes.map((size) => <button key={size} type="button" aria-pressed={values.guestCount === String(size)} onClick={() => setField("guestCount", values.guestCount === String(size) ? "" : String(size))} className={cn("min-h-8 rounded-full border px-3 text-[0.6875rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary", values.guestCount === String(size) ? "border-brand-primary bg-brand-primary text-white" : "border-border-subtle bg-white text-text-secondary hover:border-brand-primary hover:text-brand-primary")}>{size.toLocaleString("en-NG")}</button>)}</div></div>
+                    </div>
+                  </div>
+                  <div className="space-y-3"><Select label="Client or host" placeholder="Choose an existing client" value={creatingClient ? "new" : values.clientId || "none"} options={[{ label: "No client yet", value: "none" }, ...clientChoices.map((client) => ({ label: client.name, value: client.id })), { label: "+ Create a new client", value: "new" }]} onValueChange={selectClient} />
+                    {creatingClient && <div className="rounded-xl border border-[#dce9df] bg-[#f7faf7] p-4"><p className="mb-3 text-xs font-semibold text-text-primary">New client</p><div className="grid gap-3 sm:grid-cols-2"><Input label="Client name" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="e.g. Ada Okoye" /><Input label="Email" optional type="email" value={newClientEmail} onChange={(event) => setNewClientEmail(event.target.value)} placeholder="ada@example.com" /></div>{clientError && <p role="alert" className="mt-2 text-xs text-error">{clientError}</p>}<div className="mt-3 flex gap-2"><Button type="button" size="sm" onClick={saveClient} leadingIcon={<Plus className="size-4" />}>Save client</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCreatingClient(false)}>Cancel</Button></div></div>}
                   </div>
                 </AdvancedSection>
                 <CreateEventAdvanced values={values} onChange={(field, value) => setField(field, value)} estimatedBudget={estimatedBudget} />
@@ -196,10 +256,10 @@ export function CreateEventForm() {
               </div>
             )}
 
-            {saveError && <p role="alert" className="mt-6 rounded-lg bg-error-soft px-4 py-3 text-xs text-error">{saveError} {credits < 1 && <Link href="/planner/credits?tab=buy" className="font-semibold underline">Buy credits</Link>}</p>}
+            {saveError && <p role="alert" className="mt-6 rounded-lg bg-error-soft px-4 py-3 text-xs text-error">{saveError} {credits < requiredCredits && <Link href="/planner/credits?tab=buy" className="font-semibold underline">Buy credits</Link>}</p>}
             <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border-subtle pt-6 sm:flex-row sm:items-center sm:justify-between">
-              {step === 1 ? <Link href="/planner/events" className="inline-flex min-h-10 items-center justify-center px-3 text-sm font-semibold text-text-secondary hover:text-text-primary">Cancel</Link> : <Button type="button" variant="ghost" onClick={() => { setStep(1); setSaveError(""); }} leadingIcon={<ArrowLeft className="size-4" aria-hidden="true" />}>Back</Button>}
-              <Button type="submit" disabled={saving || !ready || credits < 1} trailingIcon={step === 1 ? <ArrowRight className="size-4" aria-hidden="true" /> : <CircleCheck className="size-4" aria-hidden="true" />}>{step === 1 ? "Continue with 1 credit" : saving ? "Creating…" : "Create event"}</Button>
+              {step === 1 ? <Link href="/planner/events" onClick={clearDraft} className="inline-flex min-h-10 items-center justify-center px-3 text-sm font-semibold text-text-secondary hover:text-text-primary">Cancel</Link> : <Button type="button" variant="ghost" onClick={() => { setStep(1); setSaveError(""); }} leadingIcon={<ArrowLeft className="size-4" aria-hidden="true" />}>Back</Button>}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">{step === 1 && <Button type="button" variant="outline" onClick={openAdvancedDetails} trailingIcon={<ArrowRight className="size-4" aria-hidden="true" />}>Advanced details</Button>}<Button type="submit" disabled={saving || !ready || credits < requiredCredits} trailingIcon={<CircleCheck className="size-4" aria-hidden="true" />}>{saving ? "Creating…" : `Create event · ${requiredCredits} ${creditWord}`}</Button></div>
             </div>
           </form>
         </div>
@@ -219,6 +279,7 @@ export function CreateEventForm() {
               <PreviewRow icon={Wallet} label="Estimated budget" value={estimatedBudget !== null ? formatBudgetMoney(estimatedBudget, values.currency || "NGN") : values.budget ? formatBudgetMoney(Number(values.budget), values.currency || "NGN") : "Not added yet"} />
               <PreviewRow icon={UserRound} label="Team lead" value={values.assignedTeamMember?.trim() || "Not added yet"} />
               <PreviewRow icon={Check} label="Priority" value={`${(values.priority || "standard")[0].toUpperCase()}${(values.priority || "standard").slice(1)}`} />
+              <PreviewRow icon={Crown} label="Event tier" value={values.tier === "premium" ? "Premium" : "Standard"} />
             </div>
             <div className="pt-4"><p className="text-[0.625rem] font-semibold uppercase tracking-wide text-text-tertiary">About this event</p><p className={cn("mt-1 break-words text-xs leading-5", values.description.trim() ? "text-text-secondary" : "text-text-tertiary")}>{values.description.trim() || "Add a short description when you’re ready."}</p></div>
           </div>

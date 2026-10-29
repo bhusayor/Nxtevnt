@@ -92,6 +92,7 @@ assert.equal(decisionAttachment(changed, changed.sections.decisions[1]), undefin
 let states = [], cursor = 0;
 React.useState = initial => { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], next => { states[index] = typeof next === 'function' ? next(states[index]) : next; }]; };
 React.useRef = initial => { const index = cursor++; if (!(index in states)) states[index] = { current: initial }; return states[index]; };
+React.useMemo = calculate => calculate();
 React.useEffect = () => {};
 const walk = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(walk)];
 const text = node => (node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : [node.props?.children].flat(Infinity).map(text).join(' ')).replace(/\s+/g, ' ').trim();
@@ -132,7 +133,7 @@ async function ui() {
   assert(noteFocused && noteScrolled, 'Add a note shortcut focuses and scrolls to the note without moving focus to another field');
   draw().find(n => n.props.label === 'Decision maker’s name').props.onChange({ target: { value: 'Event host' } });
   draw().find(n => n.props['aria-label'] === 'Remove decision attachment').props.onClick();
-  draw().find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [{ name: 'new.png' }], value: '' } });
+  draw().find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [Object.assign(new Blob(['image'], { type: 'image/png' }), { name: 'new.png' })], value: '' } });
   assert.equal(uploads.size, 0, 'Selecting an attachment does not persist it');
   draw().find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
   await tick();
@@ -154,7 +155,7 @@ async function ui() {
   states = []; cursor = 0;
   currentEvent = structuredClone(fixture); failSave = true; savedId = null;
   draw().find(n => n.props['aria-label'] === 'Remove decision attachment').props.onClick();
-  draw().find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [{ name: 'failed.png' }], value: '' } });
+  draw().find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [Object.assign(new Blob(['image'], { type: 'image/png' }), { name: 'failed.png' })], value: '' } });
   const previousUploads = uploads.size;
   draw().find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick();
   assert.equal(uploads.size, previousUploads, 'Failed save cleans up only the new upload');

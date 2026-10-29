@@ -23,12 +23,12 @@ export function TaskSummary({ tasks, today, compact = false }: { tasks: readonly
   </section>;
 
   return <section aria-label="Task status summary" className="@container">
-    <div className="grid gap-3 @sm:grid-cols-2 @4xl:grid-cols-5">
-      <OverviewMetricCard animate={false} readable label="To do" value={counts.todo} detail={statusDetail(overdueByStatus.todo, "Not started")} icon={CircleDashed} tone="neutral" />
-      <OverviewMetricCard animate={false} readable label="In progress" value={counts["in-progress"]} detail={statusDetail(overdueByStatus["in-progress"], "Work underway")} icon={Clock3} tone="blue" />
-      <OverviewMetricCard animate={false} readable label="Blocked" value={counts.blocked} detail={singleLine("Awaiting input")} icon={AlertCircle} tone="amber" />
-      <OverviewMetricCard animate={false} readable label="Completed" value={counts.completed} detail={singleLine("All done")} icon={CheckCircle2} tone="sage" />
-      <OverviewMetricCard animate={false} readable label="Overdue" value={overdue} detail={singleLine(overdue ? "Past due" : "Nothing overdue")} icon={AlertCircle} tone="rose" detailClassName="border border-[#efc1ca] bg-[#fbe5e8] text-[#963e4e]" className="border-[#e7c6c3] bg-[#fff8f7] @sm:col-span-2 @4xl:col-span-1 [&_strong]:text-error" />
+    <div className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3 @4xl:grid-cols-5">
+      <OverviewMetricCard animate={false} compact readable label="To do" value={counts.todo} detail={statusDetail(overdueByStatus.todo, "Not started")} icon={CircleDashed} tone="neutral" className="sm:p-4 [&>div:last-child]:pt-3" />
+      <OverviewMetricCard animate={false} compact readable label="In progress" value={counts["in-progress"]} detail={statusDetail(overdueByStatus["in-progress"], "Work underway")} icon={Clock3} tone="blue" className="sm:p-4 [&>div:last-child]:pt-3" />
+      <OverviewMetricCard animate={false} compact readable label="Blocked" value={counts.blocked} detail={singleLine("Awaiting input")} icon={AlertCircle} tone="amber" className="sm:p-4 [&>div:last-child]:pt-3" />
+      <OverviewMetricCard animate={false} compact readable label="Completed" value={counts.completed} detail={singleLine("All done")} icon={CheckCircle2} tone="sage" className="sm:p-4 [&>div:last-child]:pt-3" />
+      <OverviewMetricCard animate={false} compact readable label="Overdue" value={overdue} detail={singleLine(overdue ? "Past due" : "Nothing overdue")} icon={AlertCircle} tone="rose" detailClassName="border border-[#efc1ca] bg-[#fbe5e8] text-[#963e4e]" className="border-[#e7c6c3] bg-[#fff8f7] sm:p-4 [&>div:last-child]:pt-3 @sm:col-span-2 @4xl:col-span-1 [&_strong]:text-error" />
     </div>
   </section>;
 }

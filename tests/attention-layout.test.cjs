@@ -1,0 +1,37 @@
+// UI/render and date-boundary fixtures only. No navigation or user storage writes.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+const root=path.resolve(__dirname,'..'),original=Module._load;let slots=[],cursor=0;
+Module._load=function(id,parent,main){
+  if(id==='next/link')return({children,...props})=>React.createElement('a',props,children);
+  if(id==='next/navigation')return{usePathname:()=>'/planner/events'};
+  if(id==='@/components/nextevnt/brand-logo')return{BrandMark:()=>React.createElement('span',{'data-brand-mark':true})};
+  if(id==='@/components/ui/icons')return new Proxy({},{get:(_,name)=>({weight,...props})=>React.createElement('svg',{...props,'data-icon':String(name)})});
+  if(id==='@/lib/planner-credits')return{useCreditBalance:()=>1};
+  if(id==='@/lib/planner-events')return{addGuestMilestoneToExistingEvents(){throw Error('No migration during render');}};
+  if(id.startsWith('@/'))id=path.join(root,'src',id.slice(2));return original.call(this,id,parent,main);
+};
+for(const extension of ['.ts','.tsx'])Module._extensions[extension]=(mod,file)=>mod._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:1,target:9,jsx:4,esModuleInterop:true}}).outputText,file);
+const {attentionDateRange,attentionInRange}=require('../src/lib/attention-date-range.ts');
+const today='2026-10-26',all=attentionDateRange('all','','',today),week=attentionDateRange('week','','',today);
+assert.deepEqual([week.start,week.end],['2026-10-26','2026-11-01']);
+assert.deepEqual([attentionDateRange('month','','','2024-02-12').start,attentionDateRange('month','','','2024-02-12').end],['2024-02-01','2024-02-29']);
+assert(attentionInRange({task:{dueDate:'2026-11-01'}},week));assert(!attentionInRange({task:{dueDate:'2026-11-02'}},week));
+assert(attentionInRange({filterDate:today},attentionDateRange('today','','',today)),'Real payments use installment dates');
+assert(attentionInRange({inquiry:{createdAt:today+'T09:00:00Z',eventDate:'2099-01-01'}},week),'Inquiries use received date, not preferred event date');
+assert(!attentionInRange({vendorReply:{createdAt:'2026-10-25T09:00:00Z'}},week));
+assert(attentionInRange({samplePayment:{date:today}},week));assert(attentionInRange({task:{}},all));assert(!attentionInRange({task:{}},week));
+assert(!attentionDateRange('custom','2026-11-01','2026-10-01',today).valid);assert(!attentionDateRange('custom','2026-02-30','',today).valid);
+assert(attentionInRange({filterDate:today},attentionDateRange('custom',today,'',today)));assert(!attentionInRange({filterDate:'2026-02-30'},attentionDateRange('custom','2026-02-01','2026-03-31',today)));
+const {PlannerShell}=require('../src/components/planner/planner-shell.tsx'),{PlannerDesktopSidebar}=require('../src/components/planner/planner-desktop-sidebar.tsx');
+React.useState=initial=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],v=>slots[i]=typeof v==='function'?v(slots[i]):v];};React.useEffect=()=>{};
+const walk=n=>!n||typeof n!=='object'?[]:[n,...[n.props?.children].flat(Infinity).flatMap(walk)],draw=()=>{cursor=0;return walk(PlannerShell({children:'Content'}));};
+let side=draw().find(n=>n.type===PlannerDesktopSidebar);assert.equal(side.props.collapsed,false);
+let expanded=renderToStaticMarkup(React.createElement(PlannerDesktopSidebar,side.props));assert(expanded.includes('Collapse navigation'));assert(expanded.includes('aria-expanded="true"'));assert(expanded.includes('w-60'));assert(expanded.includes('NXTEVNT home'));
+side.props.onToggle();side=draw().find(n=>n.type===PlannerDesktopSidebar);assert.equal(side.props.collapsed,true);assert(draw().some(n=>n.props.className?.includes('lg:pl-20')));
+const compact=renderToStaticMarkup(React.createElement(PlannerDesktopSidebar,side.props));assert(compact.includes('Expand navigation'));assert(compact.includes('aria-expanded="false"'));assert(compact.includes('w-20'));assert(compact.includes('group-hover:opacity-100'));assert(compact.includes('group-focus-visible:opacity-100'));assert(compact.includes('aria-controls="workspace-sidebar-nav"'));
+for(const name of ['Overview','Events','Payment','Tasks','Vendors','Clients','Availability','Questionnaires','Team'])assert(compact.includes('aria-label="'+name+'"'));
+assert(compact.includes('title="Events"'));assert(compact.includes('aria-current="page"'));side.props.onToggle();assert.equal(draw().find(n=>n.type===PlannerDesktopSidebar).props.collapsed,false);assert(draw().some(n=>n.props.className?.includes('lg:pl-60')));
+const dialog=fs.readFileSync(path.join(root,'src/components/planner/inquiry-detail-dialog.tsx'),'utf8');assert(dialog.includes('max-w-xl'));assert(dialog.includes('max-h-[85dvh]'));assert(!dialog.includes('max-w-3xl'));
+const list=fs.readFileSync(path.join(root,'src/components/planner/inquiry-list.tsx'),'utf8');assert(list.includes('table-fixed'));assert(list.includes('min-w-[1080px]'));assert(list.includes('whitespace-nowrap'));
+assert(fs.existsSync(path.join(root,'public/images/brand/nxtevnt-mark.png')));
+console.log('PASS: compact accessible sidebar, logo hover/focus expansion, synchronized content inset, compact inquiry brief and structured table, due/received date filters with boundary/invalid/missing-date cases. Render/memory fixtures only.');

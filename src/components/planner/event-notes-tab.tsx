@@ -12,7 +12,7 @@ import { EventNotesBrief } from "./event-notes-brief";
 import { NoteActionsMenu } from "./note-actions-menu";
 import { NoteBody } from "./note-body";
 import { NoteTaskDialog } from "./note-task-dialog";
-import { createNoteTask, filterEventNotes, groupEventNotes, noteDate, noteTime, type NoteFilter } from "@/lib/event-notes";
+import { createNoteTask, filterEventNotes, groupEventNotes, noteDate, noteTime, noteTitleFromBody, type NoteFilter } from "@/lib/event-notes";
 import { getEventNotes, updatePlannerEvent, type EventItem, type EventNote, type PlannerEvent } from "@/lib/planner-events";
 import { usePlannerTeam } from "@/lib/planner-team";
 import { cn } from "@/lib/utils/cn";
@@ -33,7 +33,7 @@ export function EventNotesTab({ event, initialCompose = false }: { event: Planne
   const pinned = notes.filter((note) => note.pinned).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const visible = filterEventNotes(notes, filter, search);
   const emptyTitle = term ? "No matching notes" : filter === "pinned" ? "No pinned notes yet" : filter === "team" ? "No team notes yet" : filter === "nimi" ? "No notes from Nimi yet" : "No notes yet";
-  const emptyDetail = term ? "Try another title, word or author name." : filter === "pinned" ? "Pin a note from its menu to keep it here and in the side column." : filter === "nimi" ? "Notes from Nimi will appear here when they’re added to this event." : "Start with a title and a thought above. Your notes will appear here.";
+  const emptyDetail = term ? "Try another title, word or author name." : filter === "pinned" ? "Pin a note from its menu to keep it here and in the side column." : filter === "nimi" ? "Notes from Nimi will appear here when they’re added to this event." : "Write a thought above. Your notes will appear here.";
   const groups = groupEventNotes(visible);
   const linkedTask = (note: EventNote) => event.sections.tasks.find((task) => task.id === note.taskId || task.sourceNoteId === note.id);
   const taskHref = (task: EventItem) => `/planner/events/${event.id}?section=tasks&task=${encodeURIComponent(task.id)}`;
@@ -71,14 +71,15 @@ export function EventNotesTab({ event, initialCompose = false }: { event: Planne
   function renderNote(note: EventNote) {
     if (editing?.id === note.id) return <InlineNoteComposer key={note.id} initialNote={editing} autoFocus onSave={(draft) => post(draft, note)} onCancel={() => setEditing(null)} />;
     const task = linkedTask(note);
-          const title = note.title || `Note by ${note.author}`;
+          const title = note.title || noteTitleFromBody(note.body) || `Note by ${note.author}`;
+          const showTitle = Boolean(note.title && note.title !== noteTitleFromBody(note.body));
           return <article key={note.id} className={cn("min-w-0 rounded-xl border bg-white p-4 sm:p-5", note.pinned ? "border-[#cbded0]" : "border-border-subtle")}>
             <div className="flex items-start gap-3"><span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e8f1eb] text-xs font-bold text-brand-primary">{note.authorAvatar ? <Image src={note.authorAvatar} alt={`${note.author} avatar`} fill unoptimized sizes="40px" className="object-cover" /> : note.author.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?"}</span>
               <div className="min-w-0 flex-1 pt-0.5"><p className="break-words text-xs font-semibold text-text-primary">{note.author}</p><div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.6875rem] leading-5 text-text-tertiary"><time dateTime={note.createdAt}>{noteTime(note.createdAt)} · {noteDate(note.createdAt)}</time>{note.updatedAt && <span title={`Edited ${noteTime(note.updatedAt)} · ${noteDate(note.updatedAt)}`}>· Edited</span>}</div></div>
               <NoteActionsMenu title={title} pinned={note.pinned} taskHref={task ? taskHref(task) : undefined} onEdit={() => write(note)} onPin={() => pin(note)} onTask={() => { setError(""); setTaskNote(note); }} onDelete={() => { setError(""); setDeleting(note); }} />
             </div>
-            {note.title && <h5 className="mt-4 break-words text-sm font-semibold leading-6">{note.title}</h5>}
-            <div className={note.title ? "mt-1.5" : "mt-4"}><NoteBody body={note.body} /></div>
+            {showTitle && <h5 className="mt-4 break-words text-sm font-semibold leading-6">{note.title}</h5>}
+            <div className={showTitle ? "mt-1.5" : "mt-4"}><NoteBody body={note.body} /></div>
             <NoteFileAttachments event={event} noteId={note.id} />
             {task && <Link href={taskHref(task)} className="mt-4 inline-flex min-h-9 max-w-full items-center gap-2 text-xs font-semibold text-brand-primary hover:underline"><ClipboardCheck className="size-4 shrink-0" aria-hidden="true" /><span className="truncate">View task · {task.title}</span></Link>}
           </article>;

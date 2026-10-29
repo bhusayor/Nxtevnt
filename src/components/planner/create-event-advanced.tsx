@@ -3,7 +3,7 @@
 import { useRef, useState, type MouseEventHandler, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Check, ClipboardCheck, Eye, UsersRound, Wallet, X, type PhosphorIcon } from "@/components/ui/icons";
+import { ArrowRight, ArrowUpRight, Check, ChevronDown, ClipboardCheck, Eye, UsersRound, Wallet, X, type PhosphorIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -74,6 +74,7 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
   const [sampleId, setSampleId] = useState("");
   const [budgetSearch, setBudgetSearch] = useState("");
   const [milestoneSearch, setMilestoneSearch] = useState("");
+  const [expandedBudgetGroup, setExpandedBudgetGroup] = useState("");
   const sampleTrigger = useRef<HTMLButtonElement | null>(null);
   const teamMembers = usePlannerTeam();
   const allMilestoneTemplates = useMilestoneTemplates();
@@ -88,6 +89,10 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
   const sampleBudget = budgetTemplates.find((template) => template.id === sampleId) ?? budgetTemplates[0];
   const sampleMilestone = allMilestoneTemplates.find((template) => template.id === sampleId) ?? milestoneTemplates[0];
   const sampleRows = estimateBudget(sampleBudget, sampleBudget.baselineGuests);
+  const sampleGroups = [...new Set(sampleRows.map(item => item.group))].map(name => {
+    const items = sampleRows.filter(item => item.group === name);
+    return { name, items, count: items.length, amount: items.reduce((sum, item) => sum + item.amount, 0) };
+  });
   const sampleTotal = sampleRows.reduce((sum, item) => sum + item.amount, 0);
   const matchingBudgets = budgetTemplates.filter((template) => `${template.name} ${template.description} ${budgetGroup(template.name)}`.toLocaleLowerCase().includes(budgetSearch.trim().toLocaleLowerCase()));
   const matchingMilestones = allMilestoneTemplates.filter((template) => `${template.name} ${template.description} ${template.milestones.map((milestone) => milestone.title).join(" ")}`.toLocaleLowerCase().includes(milestoneSearch.trim().toLocaleLowerCase()));
@@ -97,6 +102,7 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
     setSampleId(kind === "budget" ? values.budgetTemplateId || budgetTemplates[0].id : values.milestoneTemplateId || milestoneTemplates[0].id);
     setBudgetSearch("");
     setMilestoneSearch("");
+    setExpandedBudgetGroup("");
     setSampleKind(kind);
   }
 
@@ -181,7 +187,7 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
           </div>
           <div className="min-h-0 overflow-y-auto p-5 sm:p-7">
             {sampleKind === "budget" ? <div className="grid gap-4 sm:grid-cols-[190px_minmax(0,1fr)]">
-              <div className="min-w-0"><Input label="Search templates" placeholder="Find a template…" className="text-xs placeholder:text-[0.6875rem]" value={budgetSearch} onChange={(event) => setBudgetSearch(event.target.value)} /><div className="mt-3 max-h-72 space-y-4 overflow-y-auto pr-1" aria-label="Budget templates">{["Wedding", "Corporate", "Party", "Other events"].map((group) => { const templates = matchingBudgets.filter((template) => budgetGroup(template.name) === group); return templates.length ? <div key={group}><p className="mb-1 px-2 text-[0.625rem] font-bold uppercase tracking-wider text-text-tertiary">{group}</p>{templates.map((template) => <button key={template.id} type="button" onClick={() => setSampleId(template.id)} aria-pressed={sampleId === template.id} className={cn("mb-1 block min-h-10 w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-primary", sampleId === template.id ? "bg-brand-primary text-white" : "text-text-secondary hover:bg-background-subtle")}>{template.name}</button>)}</div> : null; })}{matchingBudgets.length === 0 && <p className="px-2 py-4 text-xs text-text-secondary">No matching templates.</p>}</div></div>
+              <div className="min-w-0"><Input label="Search templates" placeholder="Find a template…" className="text-xs placeholder:text-[0.6875rem]" value={budgetSearch} onChange={(event) => setBudgetSearch(event.target.value)} /><div className="mt-3 max-h-72 space-y-4 overflow-y-auto pr-1" aria-label="Budget templates">{["Wedding", "Corporate", "Party", "Other events"].map((group) => { const templates = matchingBudgets.filter((template) => budgetGroup(template.name) === group); return templates.length ? <div key={group}><p className="mb-1 px-2 text-[0.625rem] font-bold uppercase tracking-wider text-text-tertiary">{group}</p>{templates.map((template) => <button key={template.id} type="button" onClick={() => { setSampleId(template.id); setExpandedBudgetGroup(""); }} aria-pressed={sampleId === template.id} className={cn("mb-1 block min-h-10 w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-primary", sampleId === template.id ? "bg-brand-primary text-white" : "text-text-secondary hover:bg-background-subtle")}>{template.name}</button>)}</div> : null; })}{matchingBudgets.length === 0 && <p className="px-2 py-4 text-xs text-text-secondary">No matching templates.</p>}</div></div>
               <div className="min-w-0">{matchingBudgets.some((template) => template.id === sampleId) ? renderBudgetSample() : <p className="rounded-xl border border-dashed border-border-subtle px-5 py-10 text-center text-xs text-text-secondary">Select a matching template to preview its costs.</p>}</div>
             </div> : <div className="grid gap-4 sm:grid-cols-[190px_minmax(0,1fr)]">
               <div className="min-w-0"><Input label="Search templates" placeholder="Find a template…" className="text-xs placeholder:text-[0.6875rem]" value={milestoneSearch} onChange={(event) => setMilestoneSearch(event.target.value)} /><div className="mt-3 max-h-72 space-y-4 overflow-y-auto pr-1" aria-label="Milestone templates">{["Built-in", "Your templates"].map((group) => { const templates = matchingMilestones.filter((template) => group === "Built-in" ? milestoneTemplates.some((builtIn) => builtIn.id === template.id) : !milestoneTemplates.some((builtIn) => builtIn.id === template.id)); return templates.length ? <div key={group}><p className="mb-1 px-2 text-[0.625rem] font-bold uppercase tracking-wider text-text-tertiary">{group}</p>{templates.map((template) => <button key={template.id} type="button" onClick={() => setSampleId(template.id)} aria-pressed={sampleId === template.id} className={cn("mb-1 block min-h-10 w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-primary", sampleId === template.id ? "bg-[#756086] text-white" : "text-text-secondary hover:bg-background-subtle")}>{template.name}</button>)}</div> : null; })}{matchingMilestones.length === 0 && <p className="px-2 py-4 text-xs text-text-secondary">No matching templates.</p>}</div></div>
@@ -217,7 +223,22 @@ export function CreateEventAdvanced({ values, onChange, estimatedBudget }: Props
               </div>
               <div className="mt-5 flex justify-between gap-3 px-1 text-[0.625rem] font-semibold uppercase tracking-wider text-text-tertiary"><span>Starting costs</span><span>Estimate · NGN</span></div>
               <ul className="mt-2 divide-y divide-border-subtle">
-                {sampleRows.map((item) => <li key={item.name} className="flex items-center justify-between gap-4 py-3.5 text-xs"><div className="min-w-0"><p className="font-medium text-text-primary">{item.name}</p><p className="mt-1 text-[0.6875rem] text-text-tertiary">{item.perGuest ? "Adjusts with guest count" : "Fixed starting cost"}</p></div><span className="shrink-0 font-semibold tabular-nums">{formatNaira(item.amount)}</span></li>)}
+                {sampleGroups.map((group, index) => {
+                  const expanded = expandedBudgetGroup === group.name;
+                  const panelId = `budget-sample-${sampleBudget.id}-${index}`;
+                  return <li key={group.name}>
+                    <button id={`${panelId}-trigger`} type="button" aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpandedBudgetGroup(current => current === group.name ? "" : group.name)} className="flex min-h-16 w-full items-center justify-between gap-3 rounded-lg px-1 py-3.5 text-left text-base hover:bg-background-subtle focus-visible:outline-2 focus-visible:outline-brand-primary">
+                      <span className="min-w-0"><span className="block font-semibold text-text-primary">{group.name}</span><span className="mt-1 block text-xs font-normal text-text-tertiary">{group.count} {group.count === 1 ? "item" : "items"}</span></span>
+                      <span className="flex shrink-0 items-center gap-2"><span className="font-semibold tabular-nums">{formatNaira(group.amount)}</span><ChevronDown aria-hidden="true" className={cn("size-4 text-text-tertiary motion-safe:transition-transform", expanded && "rotate-180")} /></span>
+                    </button>
+                    <div id={panelId} role="region" aria-labelledby={`${panelId}-trigger`} hidden={!expanded} className="mb-4 ml-5 mr-7">
+                      <ul className="divide-y divide-border-subtle/60">{group.items.map((item, itemIndex) => <li key={itemIndex} className="py-2.5">
+                        <div className="flex items-start justify-between gap-3 text-sm font-normal text-text-secondary"><span className="min-w-0">{item.name}</span><span className="shrink-0 tabular-nums">{formatNaira(item.amount)}</span></div>
+                        <p className="mt-1 text-xs leading-5 text-text-tertiary">{item.perGuest ? `${item.base ? formatNaira(item.base) + " base + " : ""}${formatNaira(item.perGuest)} × ${sampleBudget.baselineGuests.toLocaleString("en-NG")} guests` : "Flat fee"}</p>
+                      </li>)}</ul>
+                    </div>
+                  </li>;
+                })}
               </ul>
               <p className="mt-4 text-xs leading-5 text-text-tertiary">These estimates are a starting point. Update them as vendor quotes come in.</p>
             </div>;

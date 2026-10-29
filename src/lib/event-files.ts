@@ -11,7 +11,8 @@ export const systemFileFolders = [
 ] as const;
 export type EventFileFolder = { id: string; name: string; createdAt: string };
 export type EventFileRecord = { id: string; folderId: string; name: string; type: string; size: number; createdAt: string; storageId: string; sourceNoteId?: string };
-export type EventFileView = { id: string; folderId: string; name: string; type: string; size?: number; addedAt: string; sourceLabel: string; location: { kind: "document" | "image" | "link"; value: string } };
+export type EventFileOverride = { name?: string; folderId?: string };
+export type EventFileView = { id: string; folderId: string; name: string; type: string; size?: number; addedAt: string; sourceLabel: string; location: { kind: "document" | "image" | "link"; value: string; sourceUrl?: string } };
 export type EventFolderView = EventFileFolder & { system: boolean; legacy?: boolean; files: EventFileView[] };
 export type FolderFilter = "all" | "yours" | "system";
 export type FolderSort = "recent" | "name";
@@ -43,14 +44,15 @@ export function eventFileFolders(event: PlannerEvent, budgetItems: readonly Budg
   const seen = new Set<string>();
   const add = (file: EventFileView) => {
     if (seen.has(file.id)) return;
-    const folder = byId.get(file.folderId);
-    if (folder) { folder.files.push(file); seen.add(file.id); }
+    const override = event.fileOverrides?.[file.id];
+    const folder = byId.get(override?.folderId || file.folderId) ?? byId.get(file.folderId);
+    if (folder) { folder.files.push({ ...file, folderId: folder.id, name: override?.name || file.name }); seen.add(file.id); }
   };
   for (const file of event.fileEntries ?? []) add({ ...file, sourceLabel: file.sourceNoteId ? "Notes" : "Files", addedAt: file.createdAt, location: { kind: "document", value: file.storageId } });
   for (const image of activeMoodboardPhotos({ ...event, sections: { ...event.sections, moodboard: event.sections.moodboard ?? [] } })) add({ id: `moodboard:${image.id}`, folderId: "system:moodboard-images", name: image.title, type: "image/jpeg", addedAt: image.imageAddedAt || event.createdAt, sourceLabel: "Mood board", location: { kind: "image", value: image.image! } });
   if (event.image) add({ id: `cover:${event.id}`, folderId: "system:event-pictures", name: "Event cover", type: "image/jpeg", addedAt: event.createdAt, sourceLabel: "Event cover", location: { kind: "image", value: event.image } });
   for (const item of budgetItems.filter(item => item.eventId === event.id)) {
-    for (const attachment of item.attachments ?? []) add({ ...attachment, id: `budget:${attachment.id}`, folderId: attachment.category === "invoice" ? "system:invoices" : "system:budget-attachments", addedAt: item.createdAt, sourceLabel: `Budget · ${item.name}`, location: { kind: "document", value: attachment.id } });
+    for (const attachment of item.attachments ?? []) add({ ...attachment, id: `budget:${attachment.id}`, folderId: attachment.category === "invoice" ? "system:invoices" : "system:budget-attachments", addedAt: item.createdAt, sourceLabel: `Budget · ${item.name}`, location: { kind: "document", value: attachment.id, sourceUrl: attachment.sourceUrl } });
     for (const payment of item.payments ?? []) if (payment.receipt) add({ ...payment.receipt, id: `receipt:${payment.receipt.id}`, folderId: "system:receipts", addedAt: payment.createdAt, sourceLabel: `Payment · ${item.name}`, location: { kind: "document", value: payment.receipt.id } });
   }
   if (event.sections.files?.length) {
@@ -75,6 +77,36 @@ export function createEventFileFolder(event: PlannerEvent, folder: EventFileFold
   if (!name || name.length > 80) throw new Error("Use a folder name of 1–80 characters.");
   if (!folder.id || folder.id.startsWith("system:") || folder.id === legacyFilesFolderId || eventFileFolders(event).some(entry => entry.id === folder.id || entry.name.toLocaleLowerCase() === name.toLocaleLowerCase())) throw new Error("A folder with this name already exists. Choose another name.");
   return { ...event, fileFolders: [...(event.fileFolders ?? []), { ...folder, name }] };
+}
+
+export function deleteEventFileFolder(event: PlannerEvent, folderId: string): PlannerEvent {
+  writable(event);
+  if (!(event.fileFolders ?? []).some((folder) => folder.id === folderId)) throw new Error("This folder can’t be deleted.");
+  return {
+    ...event,
+    fileFolders: (event.fileFolders ?? []).filter((folder) => folder.id !== folderId),
+    fileEntries: (event.fileEntries ?? []).filter((file) => file.folderId !== folderId),
+    fileOverrides: Object.fromEntries(Object.entries(event.fileOverrides ?? {}).filter(([, value]) => value.folderId !== folderId)),
+  };
+}
+export function renameEventFile(event: PlannerEvent, fileId: string, name: string, budgetItems: readonly BudgetItem[] = []): PlannerEvent {
+  writable(event);
+  const nextName = name.trim();
+  if (!nextName || nextName.length > 120) throw new Error("Use a file name of 1–120 characters.");
+  const file = eventFileFolders(event, budgetItems).flatMap(folder => folder.files).find(entry => entry.id === fileId);
+  if (!file && !event.fileEntries?.some(entry => entry.id === fileId)) throw new Error("This file no longer exists.");
+  if (event.fileEntries?.some(entry => entry.id === fileId)) return { ...event, fileEntries: event.fileEntries.map(entry => entry.id === fileId ? { ...entry, name: nextName } : entry) };
+  return { ...event, fileOverrides: { ...event.fileOverrides, [fileId]: { ...event.fileOverrides?.[fileId], name: nextName } } };
+}
+export function moveEventFile(event: PlannerEvent, fileId: string, folderId: string, budgetItems: readonly BudgetItem[] = []): PlannerEvent {
+  writable(event);
+  const file = eventFileFolders(event, budgetItems).flatMap(folder => folder.files).find(entry => entry.id === fileId);
+  if (!file && !event.fileEntries?.some(entry => entry.id === fileId)) throw new Error("This file no longer exists.");
+  const destination = eventFileFolders(event).find(folder => folder.id === folderId && !folder.legacy);
+  if (!destination) throw new Error("Choose an available folder.");
+  if (["system:moodboard-images", "system:event-pictures"].includes(folderId) && file && !fileIsImage(file)) throw new Error("Only images can go in this folder.");
+  if (event.fileEntries?.some(entry => entry.id === fileId)) return { ...event, fileEntries: event.fileEntries.map(entry => entry.id === fileId ? { ...entry, folderId } : entry) };
+  return { ...event, fileOverrides: { ...event.fileOverrides, [fileId]: { ...event.fileOverrides?.[fileId], folderId } } };
 }
 export function addEventFileRecords(event: PlannerEvent, records: EventFileRecord[]): PlannerEvent {
   writable(event);

@@ -2,7 +2,9 @@
 
 import { saveBudgetAttachments, deleteBudgetAttachments, validateBudgetAttachment, validateBudgetReceipt } from "./budget-attachments";
 import { addEventFileRecords, type EventFileRecord } from "./event-files";
-import { updatePlannerEvent } from "./planner-events";
+import { getPlannerEventById, updatePlannerEvent } from "./planner-events";
+import { budgetItemsForEvent } from "./planner-budget";
+import { assertEventStorageSpace } from "./event-storage";
 
 /** Commit payloads first, metadata second; clean staged blobs if the event save fails. */
 export async function uploadEventFiles(eventId: string, folderId: string, files: File[], sourceNoteId?: string, isCurrent = () => true) {
@@ -11,6 +13,10 @@ export async function uploadEventFiles(eventId: string, folderId: string, files:
   const invalid = files.map(validateBudgetAttachment).find(Boolean);
   if (invalid) throw new Error(invalid);
   if (folderId === "system:receipts") { const invalidReceipt = files.map(validateBudgetReceipt).find(Boolean); if (invalidReceipt) throw new Error(invalidReceipt); }
+  const currentEvent = getPlannerEventById(eventId);
+  if (!currentEvent) throw new Error("This event no longer exists.");
+  if (currentEvent.cancelledAt) throw new Error("Reopen this event before adding files or folders.");
+  await assertEventStorageSpace(currentEvent, budgetItemsForEvent(eventId), files.reduce((sum, file) => sum + file.size, 0));
   const now = new Date().toISOString();
   const records: EventFileRecord[] = files.map(file => { const id = crypto.randomUUID(); return { id, storageId: `event-file:${id}`, folderId, name: file.name, type: file.type, size: file.size, createdAt: now, sourceNoteId }; });
   await saveBudgetAttachments(records.map((record, index) => ({ attachment: { ...record, id: record.storageId }, file: files[index] })));

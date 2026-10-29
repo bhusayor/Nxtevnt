@@ -51,6 +51,10 @@ export function notePlainText(body: string) {
   return body.replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g, "$1").replace(/\*\*|__|~~|\^\^/g, "").replace(/\*([^*]+)\*/g, "$1");
 }
 
+export function noteTitleFromBody(body: string) {
+  return body.split(/\r?\n/).map((line) => notePlainText(line.replace(/^\s*-\s+/, "")).trim()).find(Boolean)?.slice(0, 120) ?? "";
+}
+
 const escape = (text: string) => text.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 function inlineHtml(text: string): string {
   return text.split(/(\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|\^\^[^^]+\^\^|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^)]+\))/g).map((part) => {

@@ -9,8 +9,10 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { dateKey } from "@/lib/planner-dashboard";
 import { savePlannerInquiry } from "@/lib/planner-business";
+import { inquiryServices, prepareInquiryDetails } from "@/lib/inquiry-details";
+import { currencies } from "@/lib/planner-budget";
 
-export type PublicInquiryRequest = { title: string; detail?: string; date?: string; eventType?: string };
+export type PublicInquiryRequest = { title: string; detail?: string; date?: string; eventType?: string; services?: string[] };
 
 // Mounted anew for each request so details from one package never leak into another.
 export function PublicProfileInquiry({ request, brand, onClose }: { request: PublicInquiryRequest; brand: string; onClose: () => void }) {
@@ -29,9 +31,11 @@ export function PublicProfileInquiry({ request, brand, onClose }: { request: Pub
     if (!name || !message || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || (eventType === "Other" && !otherType.trim())) { setError("Add your name, a valid email, event type and a short message."); return; }
     if (date && date < dateKey(new Date())) { setError("Choose today or a future event date."); return; }
     try {
-      savePlannerInquiry({ id: crypto.randomUUID(), name, email, subject: request.title, message: [request.detail, message, date && `Preferred date: ${date}`].filter(Boolean).join("\n\n"), status: "open", createdAt: new Date().toISOString(), eventType: eventType === "Other" ? otherType.trim() : eventType });
+      const field = (name: string) => String(form.get(name) || "");
+      const details = prepareInquiryDetails({ eventDate: date, location: field("location"), phone: field("phone"), guestCount: field("guestCount"), budgetMin: field("budgetMin"), budgetMax: field("budgetMax"), currency: field("currency"), services: form.getAll("services").map(String) });
+      savePlannerInquiry({ id: crypto.randomUUID(), name, email, subject: request.title, message, requestDetail: request.detail, ...details, senderType: "client", receivedVia: "NXTEVNT profile", status: "open", createdAt: new Date().toISOString(), eventType: eventType === "Other" ? otherType.trim() : eventType });
       setError(""); setSent(true);
-    } catch { setError("Your inquiry couldn’t be saved. Please try again."); }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Your inquiry couldn’t be saved. Please try again."); }
   }
   return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}><Dialog.Portal>
     <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
@@ -44,6 +48,10 @@ export function PublicProfileInquiry({ request, brand, onClose }: { request: Pub
         <div className="grid gap-4 sm:grid-cols-2"><Input name="name" label="Your name" required autoComplete="name" maxLength={100} placeholder="Full name" /><Input name="email" label="Email address" type="email" required autoComplete="email" maxLength={254} placeholder="you@example.com" /></div>
         <div className="grid gap-4 sm:grid-cols-2"><Select label="Event type" required value={eventType} onValueChange={setEventType} options={["Wedding", "Corporate", "Party", "Other"].map((value) => ({ label: value, value }))} /><Input label="Event date" optional name="date" type="date" min={dateKey(new Date())} defaultValue={request.date || ""} className="min-w-0 max-w-full" /></div>
         {eventType === "Other" && <Input label="What are you planning?" required value={otherType} maxLength={80} onChange={(event) => setOtherType(event.target.value)} placeholder="e.g. A family reunion" />}
+        <div className="grid gap-4 sm:grid-cols-2"><Input label="Location" optional name="location" maxLength={250} placeholder="City, country or preferred venue" /><Input label="Expected guests" optional name="guestCount" type="number" min={1} step={1} placeholder="e.g. 200" /></div>
+        <Input label="Phone / WhatsApp" optional name="phone" type="tel" autoComplete="tel" maxLength={30} placeholder="+234…" helperText="Include your country code so the planner can call or open WhatsApp." />
+        <fieldset className="space-y-3 rounded-xl border border-border-subtle p-4"><legend className="px-1 text-sm font-semibold">Your total event budget · Optional</legend><p className="text-sm leading-6 text-text-secondary">For the whole event, not just the planning fee.</p><label className="block text-sm font-medium">Currency<select name="currency" defaultValue="NGN" className="mt-1 h-10 w-full rounded-lg border border-border-default bg-white px-3">{currencies.map(currency => <option key={currency.code} value={currency.code}>{currency.code} — {currency.label}</option>)}</select></label><div className="grid gap-3 sm:grid-cols-2"><Input label="From" name="budgetMin" type="number" min={0} step="0.01" /><Input label="To" name="budgetMax" type="number" min={0} step="0.01" /></div></fieldset>
+        <fieldset><legend className="text-sm font-semibold">Services you’d like · Optional</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{[...new Set([...inquiryServices, ...(request.services || [])])].map(service => <label key={service} className="flex min-h-11 items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm"><input type="checkbox" name="services" value={service} defaultChecked={request.services?.includes(service)} className="size-4 accent-brand-primary" />{service}</label>)}</div></fieldset>
         <Textarea name="message" label="Tell us about your plans" placeholder="The occasion, location, guest count, and what you’d love help with…" required maxLength={2000} rows={4} helperText="A short introduction is all you need to get started." />
         {error && <p role="alert" className="text-xs text-error">{error}</p>}
         <Button type="submit" fullWidth trailingIcon={<Send className="size-4" aria-hidden="true" />}>Send inquiry · Preview</Button>

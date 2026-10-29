@@ -4,6 +4,7 @@ export type DashboardEvent = {
   slug: string;
   name: string;
   type: string;
+  tier?: "standard" | "premium";
   date: string;
   day: string;
   month: string;

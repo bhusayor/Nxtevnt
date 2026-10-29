@@ -38,9 +38,10 @@ for (const role of ['planner', 'vendor', 'client']) {
 const primary = buttonVariants({ variant: 'primary' });
 assert(primary.includes('bg-[image:var(--action-primary-gradient)]')); assert(primary.includes('hover:bg-[image:var(--action-primary-gradient-hover)]')); assert(primary.includes('active:bg-[image:var(--action-primary-gradient-active)]'));
 for (const variant of ['outline', 'secondary', 'ghost', 'soft', 'destructive']) assert(!buttonVariants({ variant }).includes('gradient'));
-for (const file of ['auth/reset-password-form.tsx', 'planner/attention-queue.tsx', 'planner/credit-pack-picker.tsx', 'planner/credits-page.tsx', 'planner/event-date-time-fields.tsx', 'planner/note-composer.tsx', 'planner/questionnaire-builder.tsx']) {
+for (const file of ['auth/reset-password-form.tsx', 'planner/credit-pack-picker.tsx', 'planner/credits-page.tsx', 'planner/event-date-time-fields.tsx', 'planner/note-composer.tsx', 'planner/questionnaire-builder.tsx']) {
   assert(fs.readFileSync(path.join(root, 'src/components', file), 'utf8').includes('bg-[image:var(--action-primary-gradient)]'), `${file} uses the shared primary gradient`);
 }
+assert(fs.readFileSync(path.join(root, 'src/components/planner/inquiry-detail-dialog.tsx'), 'utf8').includes('buttonVariants()'), 'Extracted inquiry contact action uses the shared primary button gradient');
 const disabled = renderToStaticMarkup(React.createElement(Button, { disabled: true }, 'Save')); assert(disabled.includes('disabled=""'));
 const loading = renderToStaticMarkup(React.createElement(Button, { loading: true }, 'Saving')); assert(loading.includes('aria-busy="true"')); assert(loading.includes('disabled=""'));
 const tokens = fs.readFileSync(path.join(root, 'src/styles/tokens.css'), 'utf8');

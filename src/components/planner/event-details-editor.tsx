@@ -43,10 +43,32 @@ export function EventDetailsEditor({ event, className }: { event: PlannerEvent; 
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
   const [confirmGuestPricing, setConfirmGuestPricing] = useState(false);
+  const clientChoices = details.clientId && details.clientName && !clients.some(client => client.id === details.clientId)
+    ? [...clients, { id: details.clientId, name: details.clientName }] : clients;
 
   function setField<K extends keyof NewPlannerEvent>(field: K, value: NewPlannerEvent[K]) {
     setDetails((current) => ({ ...current, [field]: value }));
     if (error) setError("");
+  }
+
+  function selectClient(value: string) {
+    if (value === "new") { setCreatingClient(true); return; }
+    const client = clientChoices.find(entry => entry.id === value);
+    if (value !== "none" && !client) return;
+    setDetails(current => ({ ...current, clientId: client?.id || "", clientName: client?.name || "" }));
+    setCreatingClient(false);
+    setError("");
+  }
+
+  function saveClient() {
+    try {
+      const client = addPlannerClient(newClientName, newClientEmail);
+      setDetails(current => ({ ...current, clientId: client.id, clientName: client.name }));
+      setCreatingClient(false);
+      setNewClientName("");
+      setNewClientEmail("");
+      setError("");
+    } catch (problem) { setError(problem instanceof Error ? problem.message : "Couldn’t save this client."); }
   }
 
   function save(formEvent: FormEvent<HTMLFormElement>) {
@@ -85,13 +107,13 @@ export function EventDetailsEditor({ event, className }: { event: PlannerEvent; 
         <Input label="Venue" optional placeholder="Where is it happening?" value={details.location} onChange={(change) => setField("location", change.target.value)} />
         <div className="grid gap-5 sm:grid-cols-2"><Input label="Start time" type="time" optional value={details.startTime} onChange={(change) => setField("startTime", change.target.value)} /><Input label="End time" type="time" optional value={details.endTime} onChange={(change) => setField("endTime", change.target.value)} /></div>
         <EventTimeZonePicker id="edit-event-time-zone" value={details.timeZone || "Africa/Lagos"} onChange={(value) => setField("timeZone", value)} />
-        <div className="grid gap-5 sm:grid-cols-2"><Select label="Client or host" value={creatingClient ? "new" : details.clientId || clients.find((client) => client.name === details.clientName)?.id || "none"} options={[{ label: "No client yet", value: "none" }, ...clients.map((client) => ({ label: client.name, value: client.id })), { label: "+ Create a new client", value: "new" }]} onValueChange={(value) => { if (value === "new") { setCreatingClient(true); return; } setCreatingClient(false); const client = clients.find((entry) => entry.id === value); setField("clientId", client?.id || ""); setField("clientName", client?.name || ""); }} /><Input label="Expected guests" type="number" min="0" optional value={details.guestCount} onChange={(change) => setField("guestCount", change.target.value)} /></div>
-        {creatingClient && <div className="rounded-xl border border-border-subtle bg-[#f7faf7] p-4"><div className="grid gap-3 sm:grid-cols-2"><Input label="Client name" value={newClientName} onChange={(change) => setNewClientName(change.target.value)} /><Input label="Email" optional type="email" value={newClientEmail} onChange={(change) => setNewClientEmail(change.target.value)} /></div><div className="mt-3 flex gap-2"><Button type="button" size="sm" onClick={() => { try { const client = addPlannerClient(newClientName, newClientEmail); setField("clientId", client.id); setField("clientName", client.name); setCreatingClient(false); setNewClientName(""); setNewClientEmail(""); } catch (problem) { setError(problem instanceof Error ? problem.message : "Couldn’t save this client."); } }}>Save client</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCreatingClient(false)}>Cancel</Button></div></div>}
+        <div className="grid gap-5 sm:grid-cols-2"><Select label="Client or host" value={creatingClient ? "new" : details.clientId || clients.find((client) => client.name === details.clientName)?.id || "none"} options={[{ label: "No client yet", value: "none" }, ...clientChoices.map((client) => ({ label: client.name, value: client.id })), { label: "+ Create a new client", value: "new" }]} onValueChange={selectClient} /><Input label="Expected guests" type="number" min="0" optional value={details.guestCount} onChange={(change) => setField("guestCount", change.target.value)} /></div>
+        {creatingClient && <div className="rounded-xl border border-border-subtle bg-[#f7faf7] p-4"><div className="grid gap-3 sm:grid-cols-2"><Input label="Client name" value={newClientName} onChange={(change) => setNewClientName(change.target.value)} /><Input label="Email" optional type="email" value={newClientEmail} onChange={(change) => setNewClientEmail(change.target.value)} /></div><div className="mt-3 flex gap-2"><Button type="button" size="sm" onClick={saveClient}>Save client</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCreatingClient(false)}>Cancel</Button></div></div>}
         <CurrencyInput label="Estimated budget" placeholder="0" value={formatGroupedDigits(details.budget)} onChange={(change) => setField("budget", change.target.value.replace(/[^0-9]/g, "").slice(0, 15))} />
         <div className="grid gap-5 sm:grid-cols-2"><CurrencyInput label="Client’s target budget" placeholder="0" value={formatGroupedDigits(details.targetBudget ?? "")} onChange={(change) => setField("targetBudget", change.target.value.replace(/[^0-9]/g, "").slice(0, 15))} /><Select label="Event priority" value={details.priority === "low" ? "standard" : details.priority ?? "standard"} onValueChange={(value) => setField("priority", value as NewPlannerEvent["priority"])} options={[{ label: "Standard", value: "standard" }, { label: "High", value: "high" }, { label: "Highest", value: "highest" }]} /></div>
         <Select label="Team lead" value={details.assignedTeamMember || "unassigned"} onValueChange={(value) => setField("assignedTeamMember", value === "unassigned" ? "" : value)} options={[{ label: "No lead assigned", value: "unassigned" }, ...teamMembers.map((member) => ({ label: member.isOwner ? `${member.name} · You` : member.name, value: member.name }))]} />
         <Textarea label="About this event" optional rows={3} value={details.description} onChange={(change) => setField("description", change.target.value)} />
-        <CoverPicker value={details.image} onChange={(src) => setField("image", src)} />
+        <CoverPicker value={details.image} onChange={(src) => setField("image", src)} event={event} />
         {error && <p role="alert" className="rounded-lg bg-error-soft px-3 py-2 text-xs text-error">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-border-subtle pt-5 sm:flex-row sm:justify-end"><Dialog.Close asChild><Button type="button" variant="ghost">Cancel</Button></Dialog.Close><Button type="submit">Save changes</Button></div>
       </form>

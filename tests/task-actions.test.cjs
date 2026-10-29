@@ -43,6 +43,19 @@ const choose = (props, value) => { const radio = render(TaskMoveDialog, props).f
 const submit = props => render(TaskMoveDialog, props).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
 
 try {
+  seed();
+  const linkedTaskProps = { event: read(), initialTaskId: 't1' };
+  let linkedNodes = render(TaskWorkspace, linkedTaskProps);
+  const linkedDetail = linkedNodes.find(n => n.type === TaskDetailDialog);
+  assert.equal(linkedDetail.props.task.id, 't1', 'Task links open details first');
+  assert(!linkedNodes.some(n => n.type === stubs['Dialog.Root'] && n.props.open), 'The edit form remains closed');
+  linkedDetail.props.onEdit(); linkedNodes = render(TaskWorkspace, linkedTaskProps);
+  assert(!linkedNodes.some(n => n.type === TaskDetailDialog));
+  assert(linkedNodes.some(n => n.type === stubs['Dialog.Root'] && n.props.open), 'Edit remains available from details');
+  seed(); linkedNodes = render(TaskWorkspace, { event: read(), initialTaskId: 'missing' });
+  assert(!linkedNodes.some(n => n.type === TaskDetailDialog));
+  seed(); linkedNodes = render(TaskWorkspace, { event: read(), initialAction: 'add-task' });
+  assert(linkedNodes.some(n => n.type === stubs['Dialog.Root'] && n.props.open), 'Add task still opens the composer');
   // Milestone row colours use every active task, independent of filters/collapse.
   const row = nodes => nodes.find(n => n.props?.['data-milestone-state'] && n.props['aria-label'] === 'Venue');
   const colourFixture = taskItems => {

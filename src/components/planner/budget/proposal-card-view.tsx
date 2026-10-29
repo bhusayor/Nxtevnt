@@ -3,8 +3,9 @@
 import { useId, useState } from "react";
 import { useScrolledPast } from "@/lib/use-scrolled-past";
 import { ProposalStickyHeader } from "./proposal-sticky-header";
-import { ArrowRight, ChevronDown, Pencil, Plus, FileText, Wallet } from "@/components/ui/icons";
+import { ChevronDown, Pencil, FileText, Plus, Wallet } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
+import { EventTierChip } from "@/components/planner/event-tier-chip";
 import { BudgetGroupIcon } from "./budget-group-icon";
 import { comparisonItemRows, comparisonRows, lineTotal, proposalRowDifference, proposalRowDiffers, proposalTotal, type BudgetProposal, type ComparisonColumn } from "@/lib/budget-proposals";
 import { pricingDescription } from "@/lib/budget-pricing";
@@ -13,7 +14,7 @@ import { BudgetDifference, hasProposalItems, ProposalMenu, type ProposalActions 
 import { proposalGridClass, proposalTheme } from "./proposal-appearance";
 import { cn } from "@/lib/utils/cn";
 
-export function ProposalCards({ current, proposals, currency, target, actions, onCreate, slots, differencesOnly = false, onOpenBudget }: { current: ComparisonColumn; proposals: BudgetProposal[]; currency: string; target: number | null; actions: ProposalActions; onCreate: () => void; slots: number; differencesOnly?: boolean; onOpenBudget: () => void }) {
+export function ProposalCards({ current, proposals, currency, target, actions, differencesOnly = false, onOpenBudget, onCreate, eventId, eventName, tier }: { current: ComparisonColumn; proposals: BudgetProposal[]; currency: string; target: number | null; actions: ProposalActions; differencesOnly?: boolean; onOpenBudget: () => void; onCreate?: () => void; eventId?: string; eventName?: string; tier?: "standard" | "premium" }) {
   const cardHeader = useScrolledPast<HTMLElement>();
   const id = useId();
   // Collapse choices are shared across cards, so matching categories stay aligned.
@@ -28,7 +29,7 @@ export function ProposalCards({ current, proposals, currency, target, actions, o
   return <section aria-label="Budget and proposal cards" className="space-y-4">
     <ProposalStickyHeader columns={columns} currency={currency} visible={cardHeader.passed} />
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-semibold">Find the right feel for your event</h3><p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">Explore the choices side by side. Categories and priced items open below, with your current budget as the reference.</p></div><button type="button" disabled={!rows.length} onClick={() => setCollapsed(allExpanded ? new Set(rows.map((row) => row.key)) : new Set())} className="min-h-10 shrink-0 text-sm font-semibold text-brand-primary hover:underline disabled:opacity-40">{allExpanded ? "Collapse all groups" : "Expand all groups"}</button></div>
-    <div className={cn("grid items-stretch gap-4", proposalGridClass(columns.length))}>{columns.map((column, index) => {
+    <div className={cn("grid items-stretch gap-4", proposalGridClass(eventId ? 4 : columns.length))}>{columns.map((column, index) => {
       const proposal = index > 0 ? proposals[index - 1] : null;
       const theme = proposalTheme(index);
       const priced = hasProposalItems(column);
@@ -68,10 +69,13 @@ export function ProposalCards({ current, proposals, currency, target, actions, o
         {!rows.length && <p className="px-5 py-8 text-sm leading-6 text-text-tertiary">{differencesOnly ? "Your proposals match. Turn off Differences only to explore all the groups." : "Start with the costs that matter to this event."}</p>}
         <footer className="mt-auto border-t border-border-subtle p-5"><Button type="button" variant="outline" className="w-full" leadingIcon={<Pencil className="size-4" aria-hidden="true" />} onClick={() => proposal ? actions.onEdit(proposal) : onOpenBudget()}>{proposal ? "Edit proposal" : "Open budget"}</Button></footer>
       </article>;
+    })}
+    {eventId && onCreate && Array.from({ length: Math.max(0, 3 - proposals.length) }, (_, index) => {
+      const slot = proposals.length + index + 1;
+      if (tier !== "premium" && slot > 1) return <EventTierChip key={`slot-${slot}`} mode="locked-slot" slotNumber={slot} eventId={eventId} eventName={eventName || "this event"} tier={tier} />;
+      const content = <><span className="flex size-11 items-center justify-center rounded-xl bg-[#eef4f0] text-brand-primary"><Plus className="size-5" aria-hidden="true" /></span><span className="mt-4 text-xs font-semibold uppercase tracking-wide text-text-tertiary">Proposal {String(slot).padStart(2, "0")}</span><span className="mt-2 text-sm font-semibold text-text-primary">{actions.canCreate ? "Create a proposal" : "Proposal in another currency"}</span><span className="mt-1 text-xs leading-5 text-text-secondary">{actions.canCreate ? "Explore another direction for your event." : "Change the currency above to view it."}</span>{actions.canCreate && <span className="mt-4 inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border-default px-3 text-xs font-semibold text-brand-primary"><Plus className="size-3.5" aria-hidden="true" />Create proposal</span>}</>;
+      const className = "flex min-h-64 min-w-0 self-start flex-col items-center justify-center rounded-2xl border border-dashed border-border-default bg-white px-5 py-7 text-center";
+      return actions.canCreate ? <button key={`slot-${slot}`} type="button" aria-label={`Create proposal ${String(slot).padStart(2, "0")}`} onClick={onCreate} className={cn(className, "transition-colors hover:border-brand-primary hover:bg-[#f7faf7] focus-visible:outline-2 focus-visible:outline-brand-primary")}>{content}</button> : <article key={`slot-${slot}`} aria-label={`Proposal ${String(slot).padStart(2, "0")} in another currency`} className={className}>{content}</article>;
     })}</div>
-    {slots > 0 && <section aria-label="Available proposal slots" className="rounded-2xl border border-dashed border-[#d9dfdf] bg-[#fafbfc] p-4 sm:p-5"><div className="mb-3 flex items-center gap-2"><FileText className="size-4 text-text-secondary" aria-hidden="true" /><h4 className="text-sm font-semibold">Room for another direction</h4></div><div className={cn("grid gap-3", slots > 1 && "sm:grid-cols-2", slots > 2 && "xl:grid-cols-3")}>{Array.from({ length: slots }, (_, index) => {
-      const theme = proposalTheme(proposals.length + index + 1);
-      return <button key={index} type="button" onClick={onCreate} className="flex min-h-24 items-center gap-3 rounded-xl border bg-white p-4 text-left transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-brand-primary" style={{ borderColor: theme.edge }}><span className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: theme.soft, color: theme.ink }}><Plus className="size-5" aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Create a proposal</span><span className="mt-1 block text-sm leading-5 text-text-secondary">Explore a different mix of choices.</span></span><ArrowRight className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" /></button>;
-    })}</div></section>}
   </section>;
 }
