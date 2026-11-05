@@ -18,7 +18,7 @@ import { usePlannerTeam } from "@/lib/planner-team";
 import { cn } from "@/lib/utils/cn";
 
 export function EventNotesTab({ event, initialCompose = false }: { event: PlannerEvent; initialCompose?: boolean }) {
-  const notes = getEventNotes(event);
+  const notes = getEventNotes(event).filter((note) => !note.archivedAt);
   const team = usePlannerTeam();
   const author = team.find((member) => member.isOwner) || team[0];
   const id = useId();
@@ -57,6 +57,9 @@ export function EventNotesTab({ event, initialCompose = false }: { event: Planne
   function pin(note: EventNote) {
     save((current) => ({ ...current, notes: "", noteEntries: getEventNotes(current).map((entry) => entry.id === note.id ? { ...entry, pinned: !entry.pinned } : entry) }), note.pinned ? "Note unpinned." : "Note moved to Pinned notes.");
   }
+  function archive(note: EventNote) {
+    save((current) => ({ ...current, notes: "", noteEntries: getEventNotes(current).map((entry) => entry.id === note.id ? { ...entry, archivedAt: new Date().toISOString() } : entry) }), "Note archived. Restore it from workspace Notes → Archive.");
+  }
   function createTask(task: EventItem) {
     if (!taskNote) return false;
     return save((current) => createNoteTask(current, getEventNotes(current), taskNote.id, task), "Task created. Your original note is still here.");
@@ -76,7 +79,7 @@ export function EventNotesTab({ event, initialCompose = false }: { event: Planne
           return <article key={note.id} className={cn("min-w-0 rounded-xl border bg-white p-4 sm:p-5", note.pinned ? "border-[#cbded0]" : "border-border-subtle")}>
             <div className="flex items-start gap-3"><span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e8f1eb] text-xs font-bold text-brand-primary">{note.authorAvatar ? <Image src={note.authorAvatar} alt={`${note.author} avatar`} fill unoptimized sizes="40px" className="object-cover" /> : note.author.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?"}</span>
               <div className="min-w-0 flex-1 pt-0.5"><p className="break-words text-xs font-semibold text-text-primary">{note.author}</p><div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.6875rem] leading-5 text-text-tertiary"><time dateTime={note.createdAt}>{noteTime(note.createdAt)} · {noteDate(note.createdAt)}</time>{note.updatedAt && <span title={`Edited ${noteTime(note.updatedAt)} · ${noteDate(note.updatedAt)}`}>· Edited</span>}</div></div>
-              <NoteActionsMenu title={title} pinned={note.pinned} taskHref={task ? taskHref(task) : undefined} onEdit={() => write(note)} onPin={() => pin(note)} onTask={() => { setError(""); setTaskNote(note); }} onDelete={() => { setError(""); setDeleting(note); }} />
+              <NoteActionsMenu title={title} pinned={note.pinned} taskHref={task ? taskHref(task) : undefined} onEdit={() => write(note)} onPin={() => pin(note)} onTask={() => { setError(""); setTaskNote(note); }} onArchive={() => archive(note)} onDelete={() => { setError(""); setDeleting(note); }} />
             </div>
             {showTitle && <h5 className="mt-4 break-words text-sm font-semibold leading-6">{note.title}</h5>}
             <div className={showTitle ? "mt-1.5" : "mt-4"}><NoteBody body={note.body} /></div>

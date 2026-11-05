@@ -8,11 +8,17 @@ Venue and Guest size are optional fields in Advanced details → Event details, 
 
 Reported flow: Advanced details → Client or host → Create a new client → enter a name → Save client. The field could return to No client yet, and creating the event then omitted its client.
 
-The client selection handler previously cleared both client fields for every unrecognised value, including an empty value. Radix Select has a hidden native form control that can emit an empty change while its options update. Treat only the explicit `none` option as a request to clear the client. Ignore empty/unrecognised callbacks, keep the selected client available as an option while the client hook refreshes, and update `clientId` and `clientName` together after a successful save. The same protection applies to Edit event.
+The client selection handler previously cleared both client fields for every unrecognised value, including an empty value. Radix Select has a hidden native form control that can emit an empty change while its options update. Treat only the explicit `none` option as a request to clear the client. Ignore empty/unrecognised callbacks, keep the selected client available as an option while the client hook refreshes, and update `clientId` and `clientName` together after a successful save. Edit event uses this flow only while the event has no attached client.
 
-After Save, the dropdown and live preview show the returned client's name. The final event stores that client's ID and name. Duplicate names reuse the existing client. Validation or storage failures retain the entered details and previous association; no event is created and no credit is used by Save client. Cancel retains the previous selection. No client yet still clears it when explicitly chosen.
+After Save, the dropdown and live preview show the returned client's name. The final event stores that client's ID and name. Duplicate names reuse the existing client. Validation or storage failures retain the entered details and previous association; no event is created and no credit is used by Save client. Cancel retains the previous selection. Before attachment, No client yet still clears a selection when explicitly chosen.
 
-Verification: `node tests/create-event-client.test.cjs` uses the actual client/event stores with in-memory storage. It covers the full save-to-event association, stale option lists, empty/unrecognised callbacks, step changes, edit flow, duplicate names, explicit clearing and failed saves. It does not create real clients/events or spend real credits.
+Verification: `node tests/create-event-client.test.cjs` uses the actual client/event stores with in-memory storage. It covers the full save-to-event association, stale option lists, empty/unrecognised callbacks, step changes, the fixed client in Edit event, and attaching a client to an unassigned event. It does not create real clients/events or spend real credits.
+
+## Edit event budget and client ownership
+
+Edit event displays the current Budget tab total and client target in read-only boxes with Edit in Budget links. Saving other event details preserves both stored budget fields. The Budgeted card remains the place to set the client's target. The overview estimate also reads the live budget items, so it matches the Budget tab.
+
+Once an event has a client ID or name, Edit event shows that client as fixed with the instruction to create a new event for another client. The event store also rejects attempts to replace or remove the client on later updates. An event without a client can still attach one in Edit event; that attachment becomes fixed after the event is saved.
 
 ## Event date navigation
 

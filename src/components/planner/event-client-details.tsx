@@ -2,12 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Mail, Pencil, Phone, UserRound, X } from "@/components/ui/icons";
+import { Crown, Mail, Pencil, Phone, UserRound, X } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updatePlannerClientContact, type PlannerClient } from "@/lib/planner-clients";
 
-export function EventClientDetails({ client, name, lead }: { client?: PlannerClient; name: string; lead?: string }) {
+export function EventClientDetails({ client, name, lead, premium = false }: { client?: PlannerClient; name: string; lead?: string; premium?: boolean }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -22,7 +22,7 @@ export function EventClientDetails({ client, name, lead }: { client?: PlannerCli
 
   return <section aria-label="Client contact details" className="mt-auto border-t border-border-subtle pt-3">
     <div className="flex items-start justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2.5"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f6f0e8] text-[#8c6a43]"><UserRound className="size-4" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs text-text-secondary">Client / host</p><p className="break-words text-sm font-semibold">{client?.name || name || "Not added yet"}</p>{lead && <p className="mt-0.5 break-words text-xs text-text-secondary">{lead} · Lead planner</p>}</div></div>
+      <div className="flex min-w-0 items-center gap-2.5"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f6f0e8] text-[#8c6a43]"><UserRound className="size-4" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs text-text-secondary">Client / host</p><div className="flex flex-wrap items-center gap-2"><p className="break-words text-sm font-semibold">{client?.name || name || "Not added yet"}</p>{premium && (client || name) && <span className="inline-flex items-center gap-1 rounded-full border border-[#e6d09b] bg-[#fff3d6] px-1.5 py-0.5 text-[0.625rem] font-semibold text-[#805a21]"><Crown className="size-3" weight="fill" aria-hidden="true" />Premium</span>}</div>{lead && <p className="mt-0.5 break-words text-xs text-text-secondary">{lead} · Lead planner</p>}</div></div>
       {client && <Dialog.Root open={open} onOpenChange={(next) => { if (next) { setEmail(client.email || ""); setPhone(client.phone || ""); setError(""); } setOpen(next); }}>
         <Dialog.Trigger asChild><button type="button" aria-label="Edit client contact details" title="Edit client contact details" className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-background-subtle focus-visible:outline-2 focus-visible:outline-brand-primary"><Pencil className="size-4" aria-hidden="true" /></button></Dialog.Trigger>
         <Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-[#10231a]/55 backdrop-blur-[2px]" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border-subtle bg-white p-5 shadow-[var(--shadow-lg)] focus:outline-none sm:p-6">

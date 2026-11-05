@@ -51,6 +51,7 @@ assert(cards.every(n => n.props.animate === false), 'Summary counts and entry an
 assert(!nodes.some(n => n.type === 'h2')); assert(!text(nodes).includes('Overdue tasks are also counted in their status.'));
 assert.equal(text(cards[0].props.detail).replace(/\s+/g, ' '), '1 overdue'); assert.equal(text(cards[1].props.detail).replace(/\s+/g, ' '), '1 overdue');
 assert.equal(cards[4].props.tone, 'rose'); assert(cards[4].props.className.includes('bg-[#fff8f7]'));
+assert(!cards[4].props.className.includes('col-span'), 'Overdue keeps the same grid width as the other task cards');
 assert(cards.every(n => n.props.detail.props.className.includes('whitespace-nowrap') && !n.props.detail.props.className.includes('truncate') && !n.props.detail.props.title));
 assert.deepEqual(cards.map(n => text(n.props.detail)), ['1 overdue', '1 overdue', 'Awaiting input', 'All done', 'Past due']);
 assert(cards.every(n => text(n.props.detail).trim().split(/\s+/).length === 2));
@@ -72,7 +73,7 @@ assert(!nodes.some(n => n.type === 'h2')); assert(!text(nodes).includes('Overdue
 assert(text(nodes).includes('Overdue')); assert(!/\d+ overdue/.test(text(nodes)), 'Compact pills show the status count only, without an extra overdue annotation'); assert(!text(nodes).includes('Upcoming')); assert(!text(nodes).includes('Ongoing'));
 assert.deepEqual(nodes.filter(n => n.type === 'dd').map(text), ['3', '2', '1', '1', '3']);
 assert(!nodes.some(n => n.props?.role === 'progressbar'), 'The previous five-pill compact layout is restored without a completion bar');
-assert.equal(nodes.filter(n => n.type === 'div' && n.props?.className?.includes('min-h-11') && n.props.className.includes('rounded-xl border')).length, 5);
+assert.equal(nodes.filter(n => n.type === 'div' && n.props?.className?.includes('min-h-9') && n.props.className.includes('rounded-xl border')).length, 5);
 const groups = [{ id: 'done', title: 'Done', dueDate: '2026-01-01' }, { id: 'late', title: 'Late' }, { id: 'open', title: 'Open', dueDate: '2026-12-01' }, { id: 'empty', title: 'Empty' }, { id: 'target', title: 'Past target', dueDate: '2026-10-22' }];
 const milestoneTasks = [{ title: 'Finished', groupId: 'done', status: 'completed', dueDate: '2026-01-01' }, { title: 'Late task', groupId: 'late', status: 'blocked', dueDate: '2026-10-22' }, { title: 'Future', groupId: 'open', status: 'todo', dueDate: '2026-11-01' }, { title: 'Unassigned', status: 'todo', dueDate: '2026-01-01' }];
 assert.deepEqual(milestoneSummary(groups, milestoneTasks, today), { total: 5, open: 4, completed: 1, overdue: 2 });
@@ -120,16 +121,11 @@ try {
   const planProps = { groups, tasks, today };
   const planDraw = () => { cursor = 0; return walk(TaskPlanSummary(planProps)); };
   nodes = planDraw();
-  assert.equal(nodes[0].props['data-expanded-summary'], 'tasks');
-  assert.equal(walk(nodes.find(n => n.props?.['aria-label'] === 'Expand milestone summary')).filter(n => n.type === stub).length, 2, 'Compact Milestone retains its right arrow');
-  assert.equal(walk(nodes.find(n => n.props?.['aria-label'] === 'Expand task summary')).filter(n => n.type === stub).length, 1, 'Expanded Task has no arrow');
-  assert(nodes.find(n => n.props?.['data-summary-layout']).props.className.includes('motion-safe:transition-[grid-template-columns]'));
-  assert(nodes[0].props.className.includes('motion-safe:transition-[height]'));
-  assert.equal(nodes.find(n => n.type === MilestoneSummary).props.compact, true); assert.equal(nodes.find(n => n.type === TaskSummary).props.compact, false);
-  nodes.find(n => n.props?.['aria-label'] === 'Expand milestone summary').props.onClick(); nodes = planDraw();
   assert.equal(nodes[0].props['data-expanded-summary'], 'milestones');
   assert.equal(walk(nodes.find(n => n.props?.['aria-label'] === 'Expand milestone summary')).filter(n => n.type === stub).length, 1, 'Expanded Milestone has no arrow');
   assert.equal(walk(nodes.find(n => n.props?.['aria-label'] === 'Expand task summary')).filter(n => n.type === stub).length, 2, 'Compact Task retains its right arrow');
+  assert(nodes.find(n => n.props?.['data-summary-layout']).props.className.includes('motion-safe:transition-[grid-template-columns]'));
+  assert(nodes[0].props.className.includes('motion-safe:transition-[height]'));
   assert.equal(nodes.find(n => n.type === MilestoneSummary).props.compact, false); assert.equal(nodes.find(n => n.type === TaskSummary).props.compact, true);
   nodes.find(n => n.props?.['aria-label'] === 'Expand task summary').props.onClick(); nodes = planDraw();
   assert.equal(nodes[0].props['data-expanded-summary'], 'tasks');

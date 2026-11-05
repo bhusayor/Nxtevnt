@@ -101,6 +101,11 @@ export type EventNote = {
   updatedAt?: string;
   taskId?: string;
   pinned: boolean;
+  kind?: "typed" | "voice" | "imported";
+  category?: string;
+  tags?: string[];
+  additionalThoughts?: string;
+  archivedAt?: string;
 };
 
 export type QuestionnaireQuestionType = "short" | "long" | "email" | "phone" | "number" | "single" | "multiple" | "dropdown" | "checkbox" | "yes-no" | "date" | "time" | "datetime" | "date-range" | "photo" | "file" | "divider";
@@ -141,10 +146,16 @@ export type PlannerEvent = {
   assignedTeamMember?: string;
   priority?: "highest" | "high" | "standard" | "low";
   tier?: "standard" | "premium";
+  /** Controls navigation only. Hidden tabs retain all of their event data. */
+  visibleTabs?: import("@/lib/event-workspace-navigation").OptionalWorkspaceSection[];
   description: string;
   image: string;
   createdAt: string;
   cancelledAt?: string;
+  /** Date-only workspace expiry. Legacy events have no configured expiry. */
+  expiresAt?: string;
+  /** Events created in this browser are owned; shared imports may mark invitations. */
+  accessRole?: "owner" | "invited";
   cancellationReason?: string;
   notes: string;
   noteEntries?: EventNote[];
@@ -216,11 +227,47 @@ function writeEvents(events: readonly PlannerEvent[]) {
 }
 
 export function usePlannerEvents() {
-  return useSyncExternalStore(subscribe, readEvents, () => emptyEvents);
+  return useSyncExternalStore(subscribe, readVisibleEvents, () => emptyEvents);
 }
 
 export function getPlannerEventById(id: string) {
-  return readEvents().find((event) => event.id === id);
+  return readVisibleEvents().find((event) => event.id === id);
+}
+
+const leftEventsKey = "nxtevnt.planner.left-events.v1";
+let visibleSource: readonly PlannerEvent[] | undefined;
+let visibleLeftRaw: string | undefined;
+let visibleEvents: readonly PlannerEvent[] = [];
+
+function leftEventIds(raw: string): string[] {
+  try { const ids: unknown = JSON.parse(raw); return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []; }
+  catch { return []; }
+}
+
+function readVisibleEvents() {
+  const events = readEvents();
+  let leftRaw = "[]";
+  try { if (typeof window !== "undefined") leftRaw = window.localStorage.getItem(leftEventsKey) ?? "[]"; } catch { /* Match the event store's blocked-storage fallback. */ }
+  if (events === visibleSource && leftRaw === visibleLeftRaw) return visibleEvents;
+  visibleSource = events; visibleLeftRaw = leftRaw;
+  const left = new Set(leftEventIds(leftRaw));
+  visibleEvents = left.size ? events.filter(event => !left.has(event.id)) : events;
+  return visibleEvents;
+}
+
+/** A named or linked client owns the event after attachment. */
+export function hasAttachedClient(event: Pick<PlannerEvent, "clientId" | "clientName">) {
+  return Boolean(event.clientId?.trim() || event.clientName?.trim());
+}
+
+/** Hides a client-owned event in this planner's workspace without removing its data. */
+export function leavePlannerEvent(id: string) {
+  const event = readEvents().find(event => event.id === id);
+  if (!event) throw new Error("This event no longer exists.");
+  if (!hasAttachedClient(event) && event.accessRole !== "invited") throw new Error("Only events with an attached client can be left.");
+  const ids = leftEventIds(window.localStorage.getItem(leftEventsKey) ?? "[]");
+  window.localStorage.setItem(leftEventsKey, JSON.stringify([...new Set([...ids, id])]));
+  window.dispatchEvent(new Event(changed));
 }
 
 export function addGuestMilestoneToExistingEvents() {
@@ -264,6 +311,7 @@ export function createPlannerEvent(input: NewPlannerEvent, id = crypto.randomUUI
     ...input,
     id,
     createdAt: new Date().toISOString(),
+    accessRole: "owner",
     notes: "",
     noteEntries: [],
     questionnaires: [],
@@ -283,7 +331,17 @@ export function updatePlannerEvent(id: string, update: (event: PlannerEvent) => 
   const events = readEvents();
   const index = events.findIndex((event) => event.id === id);
   if (index < 0) return;
-  writeEvents(events.map((event, current) => current === index ? update(event) : event));
+  writeEvents(events.map((event, current) => {
+    if (current !== index) return event;
+    const next = update(event);
+    if (hasAttachedClient(event)) {
+      const sameClient = event.clientId?.trim()
+        ? next.clientId?.trim() === event.clientId.trim()
+        : next.clientName?.trim().toLocaleLowerCase() === event.clientName.trim().toLocaleLowerCase();
+      if (!sameClient) throw new Error("Clients can’t be changed once added. Create a new event instead.");
+    }
+    return next;
+  }));
 }
 
 export const EVENT_QUESTIONNAIRE_LIMIT = 3;
@@ -379,6 +437,8 @@ export function reopenPlannerEvent(id: string) {
 export function deletePlannerEvent(id: string) {
   const events = readEvents();
   if (!events.some((event) => event.id === id)) return;
+  const event = events.find(entry => entry.id === id);
+  if (event && (hasAttachedClient(event) || event.accessRole === "invited")) throw new Error("An event with an attached client cannot be deleted from this workspace.");
   writeEvents(events.filter((event) => event.id !== id));
 }
 

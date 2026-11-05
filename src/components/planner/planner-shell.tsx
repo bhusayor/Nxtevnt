@@ -14,6 +14,7 @@ import {
   ContactRound,
   FileStack,
   LayoutDashboard,
+  NotebookPen,
   Wallet,
   X,
   Settings2,
@@ -29,10 +30,11 @@ import { cn } from "@/lib/utils/cn";
 
 const navGroups = [
   {
-    label: "Workspace",
+    label: "Plan",
     items: [
       { label: "Overview", href: "/planner", icon: LayoutDashboard },
       { label: "Events", href: "/planner/events", icon: CalendarDays },
+      { label: "Notes", href: "/planner/notes", icon: NotebookPen },
       { label: "Payment", href: "/planner/budget", icon: Wallet },
       { label: "Tasks", href: "/planner/tasks", icon: ClipboardCheck },
     ],
@@ -77,7 +79,7 @@ export function PlannerShell({ children, role = "planner" }: { children: ReactNo
       <PlannerDesktopSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(value => !value)} home={home} role={role} pathname={pathname} groups={navGroups} />
 
       <div className={cn("motion-safe:transition-[padding-left] motion-safe:duration-200", sidebarCollapsed ? "lg:pl-20" : "lg:pl-60")}>
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6 lg:px-10">
+        <header className="flex h-16 items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
             <Dialog.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <Dialog.Trigger asChild><button type="button" className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/75 text-brand-primary shadow-sm backdrop-blur-xl transition-colors hover:bg-surface-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary lg:hidden" aria-label="Open dashboard navigation"><LayoutDashboard aria-hidden="true" className="size-[22px]" weight="bold" /></button></Dialog.Trigger>

@@ -22,6 +22,7 @@ export type DashboardEvent = {
   image: string;
   alt: string;
   status: ProductStatus;
+  expiresAt?: string;
   tone: "sage" | "blue" | "lilac";
   initials: string;
   countdown: string;

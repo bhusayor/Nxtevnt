@@ -4,10 +4,14 @@ const root = path.resolve(__dirname, '..'), ts = require('typescript');
 const file = path.join(root, 'src/lib/event-workspace-navigation.ts');
 const mod = new Module(file);
 mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: 1, target: 9 } }).outputText, file);
-const { workspaceSection, budgetWorkspaceTab } = mod.exports;
-const sections = ['overview', 'notes', 'proposal', 'tasks', 'moodboard', 'agenda', 'control-room', 'files'];
+const { workspaceSection, budgetWorkspaceTab, visibleEventTabs } = mod.exports;
+const sections = ['overview', 'notes', 'proposal', 'tasks', 'moodboard', 'files'];
+const optional = ['guests', 'agenda', 'website', 'aso-ebi', 'accommodation', 'visa-travel', 'control-room'];
 for (const section of sections) assert.equal(workspaceSection(section), section);
-for (const section of ['guests', 'guest', undefined, 'unknown']) assert.equal(workspaceSection(section), 'overview');
+for (const section of optional) assert.equal(workspaceSection(section), section);
+for (const section of ['guest', undefined, 'unknown']) assert.equal(workspaceSection(section), 'overview');
+assert.deepEqual(visibleEventTabs(), ['agenda']);
+assert.deepEqual(visibleEventTabs(['guests', 'website']), ['guests', 'website']);
 assert.equal(workspaceSection('decisions'), 'notes');
 assert.equal(workspaceSection('budget'), 'proposal');
 assert.equal(workspaceSection('budget-proposal'), 'proposal');
@@ -18,8 +22,8 @@ assert.equal(budgetWorkspaceTab('budget', 'payments'), 'payments');
 const source = fs.readFileSync(path.join(root, 'src/components/planner/event-workspace.tsx'), 'utf8');
 const tabConfig = source.match(/const sections = \[([\s\S]*?)\] as const/)[1];
 assert.deepEqual([...tabConfig.matchAll(/id: "([^"]+)"/g)].map(match => match[1]), sections);
-assert(!source.includes('EventGuestSummary'));
-assert(!source.includes('active === "guests"'));
+assert(source.includes('EventGuestSummary'));
+assert(source.includes('visibleTabs: enabled ?'), 'Visibility is stored separately from event contents');
 const React = require('react'), load = Module._load, stubs = {};
 const stub = name => stubs[name] ||= () => null;
 let event = { id: 'fixture', name: 'A celebration with a long event title', sections: {} }, slots = [], cursor = 0;
@@ -28,8 +32,10 @@ Module._load = function(id, parent, main) {
   if (id === 'next/navigation') return { useRouter: () => ({}) };
   if (id === '@radix-ui/react-dialog') return new Proxy({}, { get: (_, name) => stub('Dialog.' + name) });
   if (id === '@/lib/event-workspace-navigation') return mod.exports;
-  if (id === '@/lib/planner-events') return { usePlannerEvents: () => [event], useBrowserReady: () => true, isEventCancelled: () => false };
+  if (id === '@/components/planner/event-tab-manager') return { EventTabManager: stub('EventTabManager'), optionalEventSections: optional.map(id => ({ id, label: id, icon: stub('icon'), premium: !['guests', 'agenda'].includes(id) })) };
+  if (id === '@/lib/planner-events') return { usePlannerEvents: () => [event], useBrowserReady: () => true, isEventCancelled: () => false, updatePlannerEvent: (_, update) => { event = update(event); } };
   if (id === '@/lib/planner-budget') return { useBudgetStore: () => ({ items: [] }) };
+  if (id === '@/lib/event-removal') return { shouldLeaveEvent: () => false };
   if (id.startsWith('@/components/') || id === './event-files-workspace') return new Proxy({}, { get: (_, name) => name === '__esModule' ? true : stub(name) });
   if (id.startsWith('@/lib/') && !id.endsWith('/utils/cn')) return {};
   if (id.startsWith('@/')) id = path.join(root, 'src', id.slice(2));
@@ -40,7 +46,7 @@ React.useState = initial => { const i = cursor++; if (!(i in slots)) slots[i] = 
 const { EventWorkspace } = require('../src/components/planner/event-workspace.tsx');
 const walk = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(walk)];
 function draw() { cursor = 0; return walk(EventWorkspace({ id: event.id })); }
-for (const section of sections) {
+for (const section of [...sections, 'agenda']) {
   draw().find(node => node.props.role === 'tab' && node.props.id === 'event-tab-' + section).props.onClick();
   const nodes = draw(), title = nodes.find(node => node.type === 'h1'), tabs = nodes.find(node => node.props.role === 'tablist');
   assert.equal(title.props.children, event.name, 'Event name stays visible on ' + section);
@@ -49,5 +55,15 @@ for (const section of sections) {
 }
 event = { ...event, name: 'Updated event name' };
 assert.equal(draw().find(node => node.type === 'h1').props.children, event.name, 'Edited names update the shared heading');
+const originalSections = event.sections;
+const tabManager = () => draw().find(node => node.props?.onToggle && node.props?.visibleTabs);
+tabManager().props.onToggle('agenda', false);
+assert(!draw().some(node => node.props.id === 'event-tab-agenda'), 'Removed tab leaves navigation');
+assert.strictEqual(event.sections, originalSections, 'Removing a tab never deletes event contents');
+tabManager().props.onToggle('guests', true);
+assert(draw().some(node => node.props.id === 'event-tab-guests'), 'Included Guests tab can be added');
+event = { ...event, tier: 'premium' };
+tabManager().props.onToggle('website', true);
+assert(draw().some(node => node.props.id === 'event-tab-website'), 'Premium tab can be added to Premium event');
 Module._load = load;
-console.log('PASS: event title above navigation on every tab, reactive event name, hidden Guest placeholder and preserved section/budget aliases. Read-only fixtures.');
+console.log('PASS: event title, addable tabs, Premium visibility, and non-destructive tab removal. In-memory fixtures.');

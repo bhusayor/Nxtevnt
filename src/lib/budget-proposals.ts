@@ -4,7 +4,7 @@ import { itemPricing, pricingOptions, type PricedAs } from "@/lib/budget-pricing
 
 export type ProposalLine = { id: string; name: string; vendor: string; description?: string; pricedAs?: PricedAs; quantity: number; unitPrice: number };
 export type ProposalGroup = { id: string; name: string; comparisonKey?: string; comparisonLabel?: string; items: ProposalLine[] };
-export type BudgetProposal = { id: string; name: string; currency: string; description: string; status: "draft" | "ready"; groups: ProposalGroup[]; createdAt: string; updatedAt: string };
+export type BudgetProposal = { id: string; name: string; currency: string; description: string; status: "draft" | "ready"; sharedAt?: string; chosenAt?: string; groups: ProposalGroup[]; createdAt: string; updatedAt: string };
 export type ComparisonColumn = { id: string; name: string; groups: ProposalGroup[] };
 export type ComparisonCell = { groups: ProposalGroup[]; total: number };
 export type ComparisonRow = { key: string; name: string; cells: (ComparisonCell | null)[]; different: boolean; shared: boolean };
@@ -65,6 +65,13 @@ export function deleteEventProposal(event: PlannerEvent, id: string) {
   return withProposals(event, eventProposals(event).filter((proposal) => proposal.id !== id));
 }
 
+export function chooseEventProposal(event: PlannerEvent, id: string) {
+  const proposals = eventProposals(event);
+  if (!proposals.some((proposal) => proposal.id === id)) throw new Error("This proposal no longer exists.");
+  const now = new Date().toISOString();
+  return withProposals(event, proposals.map((proposal) => ({ ...proposal, chosenAt: proposal.id === id ? now : undefined, updatedAt: proposal.id === id ? now : proposal.updatedAt })));
+}
+
 export function addProposalItem(event: PlannerEvent, proposalId: string, category: { key: string; name: string }, item: ProposalLine, groupId?: string) {
   const proposal = eventProposals(event).find((entry) => entry.id === proposalId);
   if (!proposal) throw new Error("This proposal no longer exists.");
@@ -118,6 +125,17 @@ const itemsSignature = (items: ProposalLine[]) => JSON.stringify(items.map(itemS
 
 export function comparisonCellSignature(cell: ComparisonCell | null) {
   return cell ? JSON.stringify({ total: cell.total, items: itemsSignature(cell.groups.flatMap((group) => group.items)) }) : null;
+}
+
+/** Differences shown in the compact comparison: item names and amounts only. */
+export function compactComparisonRowDiffers(row: ComparisonRow) {
+  const signatures = row.cells.map((cell) => cell ? JSON.stringify({
+    total: cell.total,
+    items: cell.groups.flatMap((group) => group.items)
+      .map((item) => [categoryKey(item.name), lineTotal(item)])
+      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+  }) : null);
+  return new Set(signatures).size > 1;
 }
 
 /** Proposal-to-proposal differences deliberately exclude the live budget column. */

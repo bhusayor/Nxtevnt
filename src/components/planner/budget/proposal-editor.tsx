@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Plus, Trash2, Wallet, X } from "@/components/ui/icons";
+import { Eye, Plus, Trash2, Wallet, X } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/ui/delete-confirmation";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,9 @@ import { itemPricing, type PricedAs } from "@/lib/budget-pricing";
 import { formatBudgetAmountInput } from "./budget-amount-input";
 import { copyProposalGroups, proposalTotal, validateProposal, type BudgetProposal, type ProposalGroup } from "@/lib/budget-proposals";
 import { formatBudgetMoney } from "@/lib/planner-budget";
+import { proposalGroupsFromTemplate, proposalStartingTemplates } from "@/lib/proposal-templates";
+import { ProposalTemplateSamples } from "./proposal-template-samples";
+import { useSavedProposalTemplates } from "@/lib/proposal-saved-templates";
 
 type DraftLine = { id: string; name: string; vendor: string; description: string; pricedAs: PricedAs; quantity: string; price: string };
 type DraftGroup = Omit<ProposalGroup, "items"> & { items: DraftLine[] };
@@ -25,12 +28,23 @@ export function ProposalEditor({ initial, fresh, currentGroups, onClose, onSave,
   const [status, setStatus] = useState(initial.status);
   const [groups, setGroups] = useState<DraftGroup[]>(toDraft(initial.groups, guestCount));
   const [source, setSource] = useState("blank");
+  const [templateId, setTemplateId] = useState("");
+  const [sampleOpen, setSampleOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const savedTemplates = useSavedProposalTemplates().filter((template) => template.currency === initial.currency);
   const total = proposalTotal({ groups: toGroups(groups, guestCount) });
   const patchGroup = (id: string, change: Partial<DraftGroup>) => setGroups((current) => current.map((group) => group.id === id ? { ...group, ...change } : group));
   function patchLine(groupId: string, id: string, change: Partial<DraftLine>) { setGroups((current) => current.map((group) => group.id === groupId ? { ...group, items: group.items.map((item) => item.id === id ? { ...item, ...change } : item) } : group)); }
   function addLine(groupId: string) { setGroups((current) => current.map((group) => group.id === groupId ? { ...group, items: [...group.items, { id: crypto.randomUUID(), name: "", vendor: "", description: "", pricedAs: "flat-fee", quantity: "1", price: "" }] } : group)); }
+  function useTemplate(id: string) {
+    const selected = proposalStartingTemplates.find((entry) => entry.template.id === id);
+    if (!selected) return;
+    setTemplateId(id);
+    setGroups(toDraft(proposalGroupsFromTemplate(selected.template, guestCount, initial.currency), guestCount));
+    setError("");
+    setSampleOpen(false);
+  }
   function save(event: FormEvent) {
     event.preventDefault(); setError("");
     const proposal = { ...initial, name: name.trim(), description: description.trim(), status, groups: toGroups(groups, guestCount) };
@@ -42,7 +56,9 @@ export function ProposalEditor({ initial, fresh, currentGroups, onClose, onSave,
     <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-5 py-5 sm:px-6"><div><Dialog.Title className="text-lg font-semibold">{fresh ? "Create a proposal" : "Edit proposal"}</Dialog.Title><Dialog.Description className="mt-1 text-sm leading-5 text-text-secondary">Build an alternative in {initial.currency}. Your live budget, bookings and payments stay unchanged.</Dialog.Description></div><Dialog.Close asChild><button type="button" disabled={saving} aria-label="Close proposal editor" className="flex size-10 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-background-subtle"><X className="size-5" aria-hidden="true" /></button></Dialog.Close></header>
     <form onSubmit={save} className="flex min-h-0 flex-1 flex-col"><div className="min-h-0 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
       <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_200px]"><Input label="Proposal name" required maxLength={80} placeholder="e.g. An intimate celebration" value={name} onChange={(event) => setName(event.target.value)} /><Select label="Status" value={status} onValueChange={(value) => setStatus(value as BudgetProposal["status"])} options={[{ value: "draft", label: "Draft" }, { value: "ready", label: "Ready for review" }]} /></div><Textarea label="What makes this option different?" optional rows={2} maxLength={500} placeholder="Describe the priorities, trade-offs or experience behind this proposal." value={description} onChange={(event) => setDescription(event.target.value)} />
-      {fresh && currentGroups.some((group) => group.items.length) && <Select label="Starting point" value={source} onValueChange={(value) => { setSource(value); setGroups(value === "current" ? toDraft(copyProposalGroups(currentGroups), guestCount) : []); }} options={[{ value: "blank", label: "Start with a blank proposal" }, { value: "current", label: "Copy costs from the current budget" }]} helperText="Copies item estimates only—not payments, invoices or documents. Changing this choice resets the categories in this draft." />}
+      {fresh && <><Select label="Starting point" value={source} onValueChange={(value) => { setSource(value); setTemplateId(""); setGroups(value === "current" ? toDraft(copyProposalGroups(currentGroups), guestCount) : []); setError(""); }} options={[{ value: "blank", label: "Start with a blank proposal" }, ...(currentGroups.some((group) => group.items.length) ? [{ value: "current", label: "Copy costs from the current budget" }] : []), { value: "template", label: "Start from a template" }, ...(savedTemplates.length ? [{ value: "saved", label: "Start from one of your saved templates" }] : [])]} helperText="Changing the starting point replaces the categories in this draft. Your live budget stays unchanged." />
+        {source === "template" && <div className="relative"><Select label="Budget template" placeholder="Choose a template" value={templateId} onValueChange={useTemplate} options={proposalStartingTemplates.map(({ template, premium }) => ({ value: template.id, label: premium ? `Premium · ${template.name}` : template.name }))} helperText={initial.currency === "NGN" ? "Starting estimates use this event’s guest count. Review every price before sharing." : `Templates are priced in NGN. Items start at 0 ${initial.currency}; add prices in the event currency.`} /><button type="button" onClick={() => setSampleOpen(true)} className="absolute right-0 top-0 inline-flex min-h-6 items-center gap-1.5 text-sm font-semibold text-brand-primary hover:underline focus-visible:outline-2 focus-visible:outline-brand-primary"><Eye className="size-4" aria-hidden="true" />See samples</button></div>}</>}
+      {fresh && source === "saved" && <Select label="Your template" placeholder="Choose a saved template" value={templateId} onValueChange={(id) => { const template = savedTemplates.find((entry) => entry.id === id); setTemplateId(id); setGroups(template ? toDraft(copyProposalGroups(template.groups), guestCount) : []); }} options={savedTemplates.map((template) => ({ label: template.name, value: template.id }))} />}
       <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold">Categories & costs</h3><p className="mt-1 text-sm text-text-tertiary">Use the same category names to line up your comparison.</p></div><Button type="button" size="sm" variant="outline" leadingIcon={<Plus className="size-3.5" aria-hidden="true" />} onClick={() => setGroups((current) => [...current, { id: crypto.randomUUID(), name: "", items: [] }])}>Add category</Button></div>
       {!groups.length && <div className="rounded-xl border border-dashed border-border-strong bg-[#fafafa] px-5 py-9 text-center"><Wallet className="mx-auto size-7 text-text-tertiary" aria-hidden="true" /><p className="mt-3 text-sm font-semibold">Start with one category</p><p className="mt-1 text-sm leading-5 text-text-secondary">Add venue, catering, styling or any cost this option needs.</p></div>}
       <div className="space-y-4">{groups.map((group, index) => <section key={group.id} className="overflow-hidden rounded-xl border border-border-subtle"><div className="flex items-start gap-3 bg-[#f8faf8] px-4 py-4"><span className="mt-7 flex size-6 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-semibold text-brand-primary">{String(index + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1"><Input label="Category name" required maxLength={100} placeholder="e.g. Venue & rentals" value={group.name} onChange={(event) => patchGroup(group.id, { name: event.target.value })} />{group.comparisonLabel && <p className="mt-2 text-xs text-text-tertiary">Compared alongside {group.comparisonLabel}. <button type="button" onClick={() => patchGroup(group.id, { comparisonKey: undefined, comparisonLabel: undefined })} className="font-medium text-brand-primary hover:underline">Use its own category</button></p>}</div><ConfirmDeleteButton confirmationTitle="Delete proposal category?" description={`“${group.name || "This category"}” and its items will be removed from this draft. Save the proposal to apply this change.`} onConfirm={() => setGroups((current) => current.filter((entry) => entry.id !== group.id))} aria-label={`Delete category ${group.name || index + 1}`} className="mt-6 flex size-10 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-error-soft hover:text-error"><Trash2 className="size-4" aria-hidden="true" /></ConfirmDeleteButton></div>
@@ -51,5 +67,6 @@ export function ProposalEditor({ initial, fresh, currentGroups, onClose, onSave,
       </section>)}</div>
       {error && <p role="alert" className="rounded-lg bg-error-soft px-3 py-3 text-sm leading-5 text-error">{error}</p>}
     </div><footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle bg-[#fcfdfc] px-5 py-4 sm:px-6"><div><p className="text-xs text-text-tertiary">Estimated total · {initial.currency}</p><p className="mt-0.5 text-xl font-semibold tabular-nums">{formatBudgetMoney(Number.isFinite(total) ? total : 0, initial.currency)}</p></div><div className="flex gap-2"><Button type="button" variant="outline" disabled={saving} onClick={onClose}>Cancel</Button><Button type="submit" disabled={saving || !name.trim()}>{saving ? "Saving…" : fresh ? "Create proposal" : "Save changes"}</Button></div></footer></form>
+    {sampleOpen && <ProposalTemplateSamples initialTemplateId={templateId} guestCount={guestCount} currency={initial.currency} onClose={() => setSampleOpen(false)} onUse={useTemplate} />}
   </Dialog.Content></Dialog.Portal></Dialog.Root>;
 }

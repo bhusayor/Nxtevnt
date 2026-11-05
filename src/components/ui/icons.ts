@@ -1,5 +1,6 @@
 // Shared Phosphor icon aliases while existing components migrate to semantic names.
 export type { Icon as PhosphorIcon } from "@phosphor-icons/react";
+export { SignOutIcon as LogOut } from "@phosphor-icons/react/dist/ssr/SignOut";
 
 export { WarningCircleIcon as AlertCircle } from "@phosphor-icons/react/dist/ssr/WarningCircle";
 export { WarningIcon as AlertTriangle } from "@phosphor-icons/react/dist/ssr/Warning";
@@ -79,6 +80,7 @@ export { GridFourIcon as LayoutGrid } from "@phosphor-icons/react/dist/ssr/GridF
 export { KanbanIcon as Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
 export { LightbulbIcon as Lightbulb } from "@phosphor-icons/react/dist/ssr/Lightbulb";
 export { LinkIcon as Link2 } from "@phosphor-icons/react/dist/ssr/Link";
+export { LinkBreakIcon as LinkBreak } from "@phosphor-icons/react/dist/ssr/LinkBreak";
 export { ListIcon as List } from "@phosphor-icons/react/dist/ssr/List";
 export { CircleNotchIcon as LoaderCircle } from "@phosphor-icons/react/dist/ssr/CircleNotch";
 export { EnvelopeSimpleIcon as Mail } from "@phosphor-icons/react/dist/ssr/EnvelopeSimple";
@@ -100,6 +102,7 @@ export { PushPinIcon as Pin } from "@phosphor-icons/react/dist/ssr/PushPin";
 export { PlusIcon as Plus } from "@phosphor-icons/react/dist/ssr/Plus";
 export { PrinterIcon as Printer } from "@phosphor-icons/react/dist/ssr/Printer";
 export { ReceiptIcon as ReceiptText } from "@phosphor-icons/react/dist/ssr/Receipt";
+export { ShareNetworkIcon as ShareNetwork } from "@phosphor-icons/react/dist/ssr/ShareNetwork";
 export { RocketIcon as Rocket } from "@phosphor-icons/react/dist/ssr/Rocket";
 export { ArrowCounterClockwiseIcon as RotateCcw } from "@phosphor-icons/react/dist/ssr/ArrowCounterClockwise";
 export { FloppyDiskIcon as Save } from "@phosphor-icons/react/dist/ssr/FloppyDisk";

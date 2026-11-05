@@ -1,7 +1,7 @@
 // Actual client/event stores backed by memory only; no real contacts, events or credits.
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), Module = require('node:module'), ts = require('typescript'), React = require('react');
 const root = path.resolve(__dirname, '..'), original = Module._load, stubs = {}, storage = new Map();
-let slots = [], cursor = 0, clientsForHook = [], failClientWrite = false, spent = 0, destination;
+let slots = [], cursor = 0, clientsForHook = [], failClientWrite = false, spent = 0, destination, budgetFixtureItems = [];
 const clientKey = 'nxtevnt.planner.clients.v1', eventKey = 'nxtevnt.planner.events.v1';
 const stub = name => stubs[name] ||= () => null;
 Module._load = function(id, parent, main) {
@@ -12,7 +12,7 @@ Module._load = function(id, parent, main) {
   if (id === '@/lib/planner-credits') return { getCreditBalance: () => 1, useCreditBalance: () => 1, spendCreditForEvent() { spent++; return { id: 'credit' }; }, refundCreditUse() { spent--; } };
   if (id === '@/lib/planner-events') return { ...original.call(this, path.join(root, 'src/lib/planner-events.ts'), parent, main), useBrowserReady: () => true, usePlannerEvents: () => [] };
   if (id === '@/lib/planner-clients') return { ...original.call(this, path.join(root, 'src/lib/planner-clients.ts'), parent, main), usePlannerClients: () => clientsForHook };
-  if (id === '@/lib/planner-budget') return { currencies: [{ label: 'NGN', code: 'NGN' }], useBudgetStore: () => ({ items: [] }) };
+  if (id === '@/lib/planner-budget') return { currencies: [{ label: 'NGN', code: 'NGN' }], useBudgetStore: () => ({ items: budgetFixtureItems }), budgetContext: () => ({ items: budgetFixtureItems }), formatBudgetMoney: amount => `₦${amount}` };
   if (id === '@/lib/event-guest-pricing') return { perGuestItemCount: () => 0 };
   if (id === '@/lib/planner-task-templates') return { useMilestoneTemplates: () => [] };
   if (id === '@/lib/planner-team') return { usePlannerTeam: () => [] };
@@ -74,33 +74,34 @@ assert.equal(event.clientId, createdClient.id); assert.equal(event.clientName, c
 assert.equal(event.name, 'Client association fixture'); assert.equal(spent, 1);
 assert.equal(destination, '/planner/events/' + event.id);
 
-// The edit form shares the same client creation pattern and must keep the association too.
-slots = []; component = EventDetailsEditor; props = { event };
+// Once attached, the edit form fixes the client and both budget figures.
+const eventStore = require('../src/lib/planner-events.ts');
+eventStore.updatePlannerEvent(event.id, current => ({ ...current, budget: '999999', targetBudget: '25000' }));
+budgetFixtureItems = [{ budgeted: 200 }, { budgeted: 300 }];
+slots = []; component = EventDetailsEditor; props = { event: eventStore.getPlannerEventById(event.id) };
+assert.equal(picker(), undefined, 'Attached client cannot be selected or replaced');
+assert(draw().some(node => text(node).includes('Clients can’t be changed once added')));
+assert(!draw().some(node => node.type === stubs.CurrencyInput), 'Budget figures cannot be edited here');
+assert(draw().some(node => node.type?.name === 'BudgetReference' && node.props.label === 'Estimated budget' && node.props.amount === 500), 'Estimated budget reflects budget items');
+assert(draw().some(node => node.type?.name === 'BudgetReference' && node.props.label === 'Client’s target budget' && node.props.amount === 25000), 'Client budget reflects Budget tab target');
+input('Event name', 'Renamed client event'); submit();
+assert.equal(eventStore.getPlannerEventById(event.id).clientId, createdClient.id);
+assert.equal(eventStore.getPlannerEventById(event.id).clientName, createdClient.name);
+assert.equal(eventStore.getPlannerEventById(event.id).budget, '999999');
+assert.equal(eventStore.getPlannerEventById(event.id).targetBudget, '25000');
+assert.throws(() => eventStore.updatePlannerEvent(event.id, current => ({ ...current, clientId: existingClient.id, clientName: existingClient.name })), /Clients can’t be changed/);
+assert.equal(spent, 1, 'Editing never spends an event credit');
+
+// An event with no client can still attach one through Edit event.
+const unassigned = eventStore.createPlannerEvent({ ...event, name: 'Unassigned event', clientId: '', clientName: '' }, 'unassigned-event');
+slots = []; props = { event: unassigned };
 picker().props.onValueChange('new'); input('Client name', 'Edit fixture client');
 button('Save client').props.onClick();
 const editClient = JSON.parse(storage.get(clientKey)).find(client => client.name === 'Edit fixture client');
 assert.equal(picker().props.value, editClient.id);
-assert(picker().props.options.some(option => option.value === editClient.id));
-picker().props.onValueChange('');
-assert.equal(picker().props.value, editClient.id);
 submit();
-assert.equal(JSON.parse(storage.get(eventKey))[0].clientId, editClient.id);
-assert.equal(JSON.parse(storage.get(eventKey))[0].clientName, editClient.name);
-assert.equal(spent, 1, 'Editing never spends an event credit');
-
-// Duplicate names reuse the stored identity; Cancel retains it and only None clears it.
-picker().props.onValueChange('new'); input('Client name', '  ADA fixture ');
-button('Save client').props.onClick();
-assert.equal(picker().props.value, createdClient.id);
-assert.equal(JSON.parse(storage.get(clientKey)).length, 3);
-picker().props.onValueChange('new');
-draw().filter(node => node.type === stubs.Button && text(node) === 'Cancel')[0].props.onClick();
-assert.equal(picker().props.value, createdClient.id);
-picker().props.onValueChange('none');
-assert.equal(picker().props.value, 'none');
-submit();
-assert.equal(JSON.parse(storage.get(eventKey))[0].clientId, '');
-assert.equal(JSON.parse(storage.get(eventKey))[0].clientName, '');
-assert.deepEqual(JSON.parse(storage.get(clientKey))[0], existingClient);
+assert.equal(eventStore.getPlannerEventById(unassigned.id).clientId, editClient.id);
+assert.equal(eventStore.getPlannerEventById(unassigned.id).clientName, editClient.name);
+assert.equal(spent, 1);
 Module._load = original;
-console.log('PASS: save/select/persist new client, delayed options, transient Select changes, preview/step parity, edit association, duplicate reuse, explicit clearing and validation/storage failure retention. Memory stores only.');
+console.log('PASS: save/select/persist new client, delayed options, fixed attached client, read-only edit budgets, store-level client lock, and attach in an unassigned event. Memory stores only.');

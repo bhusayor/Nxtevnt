@@ -4,7 +4,8 @@ import { currentEventDecisions } from "@/lib/event-decisions";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, CalendarDays, Check, ClipboardCheck, MapPin, Scale, Star, UsersRound, Wallet } from "@/components/ui/icons";
+import { ArrowRight, Ban, CalendarDays, Check, ClipboardCheck, LogOut, MapPin, RotateCcw, Scale, Star, Trash2, UsersRound, Wallet } from "@/components/ui/icons";
+import { ActionMenu } from "@/components/ui/action-menu";
 import { EventDetailsEditor } from "@/components/planner/event-details-editor";
 import { EventClientDetails } from "@/components/planner/event-client-details";
 import { EventCoverEditor } from "@/components/planner/event-cover-editor";
@@ -16,20 +17,24 @@ import { EventMoodboardPreview } from "@/components/planner/event-moodboard";
 import { EventPhotoViewer } from "@/components/planner/event-photo-viewer";
 import { OverviewMetricCard } from "@/components/planner/overview-metric-card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { formatBudgetMoney, useBudgetStore } from "@/lib/planner-budget";
+import { budgetContext, formatBudgetMoney, useBudgetStore } from "@/lib/planner-budget";
 import { usePlannerClients } from "@/lib/planner-clients";
 import { eventDayOffset, localEventToday } from "@/lib/event-weather";
 import { completePlannerTask, formatEventDate, formatEventPlace, isCustomCover, isEventCancelled, isTaskActive, isTaskComplete, taskStatus, type PlannerEvent } from "@/lib/planner-events";
 import { cn } from "@/lib/utils/cn";
+import { shouldLeaveEvent } from "@/lib/event-removal";
 
 type Props = {
   event: PlannerEvent;
   onOpenTasks: (taskId?: string) => void;
   onOpenMoodboard: (addPhoto?: boolean) => void;
   onOpenDecisions?: () => void;
+  onCancelEvent: () => void;
+  onReopenEvent: () => void;
+  onRemoveEvent: () => void;
 };
 
-export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpenDecisions }: Props) {
+export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpenDecisions, onCancelEvent, onReopenEvent, onRemoveEvent }: Props) {
   const [showCover, setShowCover] = useState(false);
   const [taskError, setTaskError] = useState("");
   const [now, setNow] = useState<Date | null>(null);
@@ -39,7 +44,10 @@ export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpen
     return () => { window.clearTimeout(initial); window.clearInterval(timer); };
   }, []);
   const clients = usePlannerClients();
-  const budgetItems = useBudgetStore().items.filter((item) => item.eventId === event.id && item.status !== "cancelled");
+  const budgetStore = useBudgetStore();
+  const budgetItems = budgetContext([event], budgetStore, event.id, event.currency || "NGN").items;
+  const budgeted = budgetItems.reduce((total, item) => total + item.budgeted, 0);
+  const clientBudget = Number(event.targetBudget || (!event.budgetTemplateId ? event.budget : "")) || null;
   const client = event.clientId ? clients.find((item) => item.id === event.clientId) : clients.find((item) => item.name.toLocaleLowerCase() === event.clientName.trim().toLocaleLowerCase());
   const tasks = event.sections.tasks.filter(isTaskActive);
   const completed = tasks.filter(isTaskComplete).length;
@@ -49,7 +57,7 @@ export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpen
     (first.dueDate || "9999").localeCompare(second.dueDate || "9999") ||
     Number(second.priority === "high") - Number(first.priority === "high"),
   ).slice(0, 3);
-  const booked = budgetItems.filter((item) => item.vendorStatus === "booked").length;
+  const booked = budgetItems.filter((item) => item.vendorStatus === "booked" && item.status !== "cancelled").length;
   const decisions = currentEventDecisions(event).filter((item) => !item.done).length;
   const today = now ? localEventToday(event.timeZone || "Africa/Lagos", now) : "";
   const daysUntil = eventDayOffset(event.date, today);
@@ -81,7 +89,10 @@ export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpen
         <div className="flex min-w-0 flex-col bg-linear-to-br from-white to-[#f9fbf7] p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2"><span className="rounded-full bg-[#edf3ec] px-2.5 py-1 text-[0.6875rem] font-semibold text-brand-primary">{event.type}</span><StatusBadge status={cancelled ? "cancelled" : daysUntil < 0 ? "past" : "upcoming"} showDot={false} /><EventTierChip eventId={event.id} eventName={event.name} tier={event.tier} cancelled={cancelled} /></div>
-            <EventDetailsEditor event={event} className="shrink-0" />
+            <div className="flex shrink-0 items-center gap-1"><EventDetailsEditor event={event} className="shrink-0" /><ActionMenu label={`More actions for ${event.name}`} triggerClassName="border border-border-subtle bg-white" items={[
+              cancelled ? { label: "Reopen event", icon: <RotateCcw />, onSelect: onReopenEvent } : { label: "Cancel event", icon: <Ban />, onSelect: onCancelEvent },
+              { label: shouldLeaveEvent(event) ? "Leave event" : "Delete event", icon: shouldLeaveEvent(event) ? <LogOut /> : <Trash2 />, destructive: true, onSelect: onRemoveEvent },
+            ]} /></div>
           </div>
           {event.description && <p title={event.description} className="mt-2 line-clamp-1 text-sm leading-5 text-text-secondary">{event.description}</p>}
           <dl className="my-3 grid grid-cols-2 gap-x-4 gap-y-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.3fr)_minmax(0,.8fr)]">
@@ -92,7 +103,7 @@ export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpen
               {detail && <dd className="mt-0.5 break-words text-xs leading-4 text-text-secondary">{detail}</dd>}</div>
             </div>)}
           </dl>
-          <EventClientDetails client={client} name={event.clientName} lead={event.assignedTeamMember} />
+          <EventClientDetails client={client} name={event.clientName} lead={event.assignedTeamMember} premium={event.tier === "premium"} />
         </div>
       </section>
       <EventPhotoViewer photo={showCover ? { src: event.image, title: event.name } : null} onClose={() => setShowCover(false)} />
@@ -101,7 +112,7 @@ export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpen
         <header className="mb-4"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a4671c]"><Star className="size-4" aria-hidden="true" />The celebration is taking shape</p><h2 id="planning-at-a-glance" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Your planning at a glance</h2></header>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <OverviewMetricCard icon={ClipboardCheck} href={`${eventPath}?section=tasks`} label="Tasks complete" value={`${completed} of ${tasks.length}`} detail={pending.length ? `${pending.length} still to do` : tasks.length ? "Every task is complete" : "Ready for your first task"} tone="sage" progress={tasks.length ? { value: Math.round(completed / tasks.length * 100), label: "Event task completion" } : undefined} className="event-overview-metric" compact />
-        <OverviewMetricCard icon={Wallet} href={`${eventPath}?section=budget`} label="Estimated budget" value={event.budget ? formatBudgetMoney(Number(event.budget), currency) : "Not set yet"} detail={event.targetBudget ? `Client target · ${formatBudgetMoney(Number(event.targetBudget), currency)}` : "Your working event estimate"} tone="amber" animateCurrency={currency === "NGN"} className="event-overview-metric" compact />
+        <OverviewMetricCard icon={Wallet} href={`${eventPath}?section=budget`} label="Estimated budget" value={formatBudgetMoney(budgeted, currency)} detail={clientBudget !== null ? `Client target · ${formatBudgetMoney(clientBudget, currency)}` : "Your working event estimate"} tone="amber" animateCurrency={currency === "NGN"} className="event-overview-metric" compact />
         <OverviewMetricCard icon={UsersRound} href={`${eventPath}?section=budget&tab=bookings`} label="Vendor bookings" value={booked} detail="Booked budget items" tone="blue" className="event-overview-metric" compact />
         <OverviewMetricCard icon={Scale} href={`${eventPath}?section=decisions`} label="Open decisions" value={decisions} detail={decisions ? "Ready for your next call" : "No decisions waiting"} tone="lilac" className="event-overview-metric" compact />
         </div>
@@ -114,7 +125,7 @@ export function EventOverviewPanel({ event, onOpenTasks, onOpenMoodboard, onOpen
             const blocked = taskStatus(task) === "blocked";
             const overdue = Boolean(task.dueDate && task.dueDate < today);
             const milestone = event.taskGroups?.find((group) => group.id === task.groupId);
-            return <li key={task.id} className="relative flex flex-1 items-center gap-3 px-5 py-5 sm:gap-4 sm:px-6"><input type="checkbox" checked={false} disabled={cancelled} aria-label={`Mark complete: ${task.title}`} onChange={() => { try { completePlannerTask(event.id, task.id); setTaskError(""); } catch (failure) { setTaskError(failure instanceof Error ? failure.message : "Couldn’t complete this task. Please try again."); } }} className="relative z-10 size-5 shrink-0 cursor-pointer accent-brand-primary disabled:cursor-not-allowed" /><button type="button" aria-label={`Open task: ${task.title}`} onClick={() => onOpenTasks(task.id)} className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-primary"><span className="min-w-0 flex-1"><span className="block text-sm font-semibold leading-5">{task.title}</span><span className="mt-1 block text-xs leading-5 text-text-secondary">{milestone?.title || "Event task"}{task.assignee ? ` · ${task.assignee}` : ""}</span><span className={cn("mt-2 inline-flex rounded-md px-2 py-0.5 text-xs font-medium leading-4", overdue ? "bg-error-soft text-error" : blocked ? "bg-[#fff3e8] text-[#9b632e]" : "bg-[#f1f4f1] text-text-secondary")}>{blocked ? "Blocked · " : ""}{task.dueDate ? `${overdue ? "Overdue" : "Due"} ${formatEventDate(task.dueDate, { day: "numeric", month: "short" })}` : "No due date yet"}</span></span><ArrowRight className="size-4 shrink-0 text-text-tertiary group-hover:text-brand-primary" aria-hidden="true" /></button></li>;
+            return <li key={task.id} className="relative flex items-center gap-3 px-5 py-5 sm:gap-4 sm:px-6"><input type="checkbox" checked={false} disabled={cancelled} aria-label={`Mark complete: ${task.title}`} onChange={() => { try { completePlannerTask(event.id, task.id); setTaskError(""); } catch (failure) { setTaskError(failure instanceof Error ? failure.message : "Couldn’t complete this task. Please try again."); } }} className="relative z-10 size-5 shrink-0 cursor-pointer accent-brand-primary disabled:cursor-not-allowed" /><button type="button" aria-label={`Open task: ${task.title}`} onClick={() => onOpenTasks(task.id)} className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-primary"><span className="min-w-0 flex-1"><span className="block text-sm font-semibold leading-5">{task.title}</span><span className="mt-1 block text-xs leading-5 text-text-secondary">{milestone?.title || "Event task"}{task.assignee ? ` · ${task.assignee}` : ""}</span><span className={cn("mt-2 inline-flex rounded-md px-2 py-0.5 text-xs font-medium leading-4", overdue ? "bg-error-soft text-error" : blocked ? "bg-[#fff3e8] text-[#9b632e]" : "bg-[#f1f4f1] text-text-secondary")}>{blocked ? "Blocked · " : ""}{task.dueDate ? `${overdue ? "Overdue" : "Due"} ${formatEventDate(task.dueDate, { day: "numeric", month: "short" })}` : "No due date yet"}</span></span><ArrowRight className="size-4 shrink-0 text-text-tertiary group-hover:text-brand-primary" aria-hidden="true" /></button></li>;
           })}</ul> : <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 py-8 text-center"><span className="flex size-12 items-center justify-center rounded-2xl bg-[#edf5ef] text-brand-primary"><Check className="size-5" aria-hidden="true" /></span><p className="mt-4 text-sm font-semibold">{tasks.length ? "You’re all caught up" : "Start with your first milestone"}</p><p className="mt-2 max-w-xs text-xs leading-6 text-text-secondary">{tasks.length ? "All your current tasks are complete. Add the next steps when you’re ready." : "Group the work into milestones, then add tasks and dates to build your plan."}</p></div>}
           {taskError && <p role="alert" className="border-t border-border-subtle px-5 py-3 text-sm text-error">{taskError}</p>}
         </section>

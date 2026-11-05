@@ -10,7 +10,8 @@ Module._load = function(id, parent, main) {
   if (id === 'next/image') return stub('Image');
   if (id === '@radix-ui/react-dialog') return new Proxy({}, { get: (_, name) => stub(`Dialog.${name}`) });
   if (id === '@/components/ui/icons') return new Proxy({}, { get: (_, name) => stub(`Icon.${name}`) });
-  if (id === '@/lib/planner-budget') return { useBudgetStore: () => ({ items: [] }), formatBudgetMoney: value => String(value) };
+  if (id === '@/lib/planner-budget') return { useBudgetStore: () => ({ items: [] }), budgetContext: () => ({ items: [] }), formatBudgetMoney: value => String(value) };
+  if (id === '@/lib/event-removal') return { shouldLeaveEvent: () => false };
   if (id === '@/lib/event-decisions') return { currentEventDecisions: () => [] };
   if (id === '@/lib/planner-events') return {
     usePlannerEvents: () => [], isTaskActive: task => !task.archived, isTaskComplete: task => task.done, taskStatus: task => task.status,

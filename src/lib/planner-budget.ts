@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { PlannerEvent } from "@/lib/planner-events";
 import type { PricedAs } from "@/lib/budget-pricing";
+import type { ProposalGroup } from "@/lib/budget-proposals";
 
 export type PaymentStatus = "unpaid" | "upcoming" | "partially-paid" | "paid" | "overdue" | "cancelled";
 // Retain the two legacy values when reading older budgets and spreadsheets.
@@ -189,6 +190,30 @@ export function importBudgetData(groups: BudgetGroup[], items: BudgetItem[]) {
   const upserts = new Map(current.items.map((item) => [item.id, item]));
   for (const item of items) upserts.set(item.id, item);
   writeStore({ ...current, groups: [...current.groups, ...groups], items: [...upserts.values()] });
+}
+
+/** Replace planning estimates while keeping invoiced or paid records out of destructive changes. */
+export function replaceEventBudgetWithProposal(eventId: string, currency: string, proposalGroups: ProposalGroup[]) {
+  if (!proposalGroups.some((group) => group.items.length)) throw new Error("Add priced items to this proposal before using it as the live budget.");
+  const before = readStore();
+  const oldGroups = before.groups.filter((group) => group.eventId === eventId && group.currency === currency);
+  const oldIds = new Set(oldGroups.map((group) => group.id));
+  const oldItems = before.items.filter((item) => item.eventId === eventId && item.currency === currency);
+  if (oldItems.some((item) => item.invoiced > 0 || item.paid > 0 || item.payments?.length || item.attachments.length)) throw new Error("This budget has invoices, payments or attachments. Keep those records and review the proposal before replacing the live budget.");
+  const now = new Date().toISOString();
+  const groups: BudgetGroup[] = [];
+  const items: BudgetItem[] = [];
+  for (const proposalGroup of proposalGroups) {
+    const groupId = crypto.randomUUID();
+    groups.push({ id: groupId, eventId, currency, name: proposalGroup.name, createdAt: now });
+    for (const line of proposalGroup.items) {
+      const pricedAs = line.pricedAs ?? "flat-fee";
+      const quantity = pricedAs === "flat-fee" ? 1 : line.quantity;
+      items.push({ id: crypto.randomUUID(), groupId, eventId, currency, name: line.name, vendor: line.vendor, vendorStatus: line.vendor ? "sourcing" : "not-sourced", pricedAs, quantity, unitPrice: line.unitPrice, budgeted: Math.round(quantity * line.unitPrice * 100) / 100, invoiced: 0, paid: 0, paymentDate: "", notes: line.description || "", status: "unpaid", installments: [], attachments: [], payments: [], createdAt: now });
+    }
+  }
+  writeStore({ ...before, groups: [...before.groups.filter((group) => !oldIds.has(group.id)), ...groups], items: [...before.items.filter((item) => !oldIds.has(item.groupId) && !(item.eventId === eventId && item.currency === currency)), ...items] });
+  return () => writeStore(before);
 }
 
 export function legacyBudgetGroups(events: readonly PlannerEvent[]): BudgetGroup[] {

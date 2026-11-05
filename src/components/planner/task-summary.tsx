@@ -13,13 +13,13 @@ export function TaskSummary({ tasks, today, compact = false }: { tasks: readonly
     : singleLine(fallback);
 
   if (compact) return <section aria-label="Task status summary">
-    <dl className="space-y-2">{[
+    <dl className="space-y-1.5">{[
       { label: "To do", value: counts.todo, tone: "border-[#e0e5e3] bg-[#f5f7f6] text-[#52615b]" },
       { label: "In progress", value: counts["in-progress"], tone: "border-[#dce6f1] bg-[#f2f6fc] text-[#446d8b]" },
       { label: "Blocked", value: counts.blocked, tone: "border-[#eddfc9] bg-[#fdf8ef] text-[#8a6537]" },
       { label: "Completed", value: counts.completed, tone: "border-[#d6e7dc] bg-[#f0f7f2] text-[#37634a]" },
       { label: "Overdue", value: overdue, tone: "border-[#efc1ca] bg-[#fbe5e8] text-[#963e4e]" },
-    ].map((entry) => <div key={entry.label} className={`flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-xl border px-3 py-2 ${entry.tone}`}><dt className="text-sm font-medium">{entry.label}</dt><dd className="text-lg font-semibold tabular-nums">{entry.value}</dd></div>)}</dl>
+    ].map((entry) => <div key={entry.label} className={`flex min-h-9 items-center justify-between gap-2 rounded-xl border px-3 py-1.5 ${entry.tone}`}><dt className="text-sm font-medium">{entry.label}</dt><dd className="text-base font-semibold tabular-nums">{entry.value}</dd></div>)}</dl>
   </section>;
 
   return <section aria-label="Task status summary" className="@container">
@@ -28,7 +28,7 @@ export function TaskSummary({ tasks, today, compact = false }: { tasks: readonly
       <OverviewMetricCard animate={false} compact readable label="In progress" value={counts["in-progress"]} detail={statusDetail(overdueByStatus["in-progress"], "Work underway")} icon={Clock3} tone="blue" className="sm:p-4 [&>div:last-child]:pt-3" />
       <OverviewMetricCard animate={false} compact readable label="Blocked" value={counts.blocked} detail={singleLine("Awaiting input")} icon={AlertCircle} tone="amber" className="sm:p-4 [&>div:last-child]:pt-3" />
       <OverviewMetricCard animate={false} compact readable label="Completed" value={counts.completed} detail={singleLine("All done")} icon={CheckCircle2} tone="sage" className="sm:p-4 [&>div:last-child]:pt-3" />
-      <OverviewMetricCard animate={false} compact readable label="Overdue" value={overdue} detail={singleLine(overdue ? "Past due" : "Nothing overdue")} icon={AlertCircle} tone="rose" detailClassName="border border-[#efc1ca] bg-[#fbe5e8] text-[#963e4e]" className="border-[#e7c6c3] bg-[#fff8f7] sm:p-4 [&>div:last-child]:pt-3 @sm:col-span-2 @4xl:col-span-1 [&_strong]:text-error" />
+      <OverviewMetricCard animate={false} compact readable label="Overdue" value={overdue} detail={singleLine(overdue ? "Past due" : "Nothing overdue")} icon={AlertCircle} tone="rose" detailClassName="border border-[#efc1ca] bg-[#fbe5e8] text-[#963e4e]" className="border-[#e7c6c3] bg-[#fff8f7] sm:p-4 [&>div:last-child]:pt-3 [&_strong]:text-error" />
     </div>
   </section>;
 }
