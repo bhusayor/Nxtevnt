@@ -1,7 +1,7 @@
 export type OptionalWorkspaceSection = "guests" | "agenda" | "website" | "aso-ebi" | "accommodation" | "visa-travel" | "control-room";
 export type WorkspaceSection = "overview" | "notes" | "proposal" | "tasks" | "moodboard" | "files" | OptionalWorkspaceSection;
 
-export const defaultVisibleEventTabs: OptionalWorkspaceSection[] = ["agenda"];
+export const defaultVisibleEventTabs: OptionalWorkspaceSection[] = ["guests", "agenda"];
 
 export function visibleEventTabs(value?: OptionalWorkspaceSection[]): OptionalWorkspaceSection[] {
   return value ?? defaultVisibleEventTabs;

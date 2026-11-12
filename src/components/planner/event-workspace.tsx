@@ -4,7 +4,7 @@ import { deleteEventWithContents } from "@/lib/delete-event";
 
 import { ConfirmDeleteButton, DeleteConfirmation, matchesDeleteConfirmation } from "@/components/ui/delete-confirmation";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -21,7 +21,8 @@ import { EventMoodboard } from "@/components/planner/event-moodboard";
 import { AgendaWorkspace } from "@/components/planner/agenda/agenda-workspace";
 import { EventDecisionsList } from "@/components/planner/event-decision-details";
 import { EventBudgetProposals } from "@/components/planner/budget/event-budget-proposals";
-import { EventControlRoom, EventGuestSummary } from "@/components/planner/event-workspace-extras";
+import { EventControlRoom } from "@/components/planner/event-workspace-extras";
+import { EventGuestsWorkspace } from "@/components/planner/event-guests-workspace";
 import { EventFeatureSpace } from "@/components/planner/event-feature-space";
 import { EventTabManager, optionalEventSections } from "@/components/planner/event-tab-manager";
 import { budgetWorkspaceTab, visibleEventTabs, workspaceSection, type OptionalWorkspaceSection, type WorkspaceSection } from "@/lib/event-workspace-navigation";
@@ -145,6 +146,13 @@ export function EventWorkspace({ id, initialSection, initialTab, initialAction, 
   const [tabsOpen, setTabsOpen] = useState(false);
   const [premiumBannerDismissed, setPremiumBannerDismissed] = useState(false);
 
+  useEffect(() => {
+    const found = events.find((item) => item.id === id);
+    if (found && !found.guestTabInitialized) {
+      updatePlannerEvent(id, (current) => ({ ...current, guestTabInitialized: true, visibleTabs: [...new Set([...visibleEventTabs(current.visibleTabs), "guests" as const])] }));
+    }
+  }, [events, id]);
+
   async function confirmDelete(confirmation: string) {
     if (!event || (!shouldLeaveEvent(event) && !matchesDeleteConfirmation(confirmation, event.name))) return false;
     setDeleteBusy(true);
@@ -166,11 +174,11 @@ export function EventWorkspace({ id, initialSection, initialTab, initialAction, 
   const cancelled = isEventCancelled(event);
   const leave = shouldLeaveEvent(event);
   const openRemoval = () => { setDeleteError(""); setDeleting(true); };
-  const enabledTabs = visibleEventTabs(event.visibleTabs);
+  const enabledTabs = event.guestTabInitialized ? visibleEventTabs(event.visibleTabs) : [...new Set([...visibleEventTabs(event.visibleTabs), "guests" as const])];
   const visibleSections = [...sections, ...optionalEventSections.filter((item) => enabledTabs.includes(item.id) && (!item.premium || event.tier === "premium"))];
   const visibleActive = visibleSections.some((item) => item.id === active) ? active : "overview";
   function toggleEventTab(tab: OptionalWorkspaceSection, enabled: boolean) {
-    updatePlannerEvent(id, (current) => ({ ...current, visibleTabs: enabled ? [...new Set([...visibleEventTabs(current.visibleTabs), tab])] : visibleEventTabs(current.visibleTabs).filter((item) => item !== tab) }));
+    updatePlannerEvent(id, (current) => ({ ...current, guestTabInitialized: true, visibleTabs: enabled ? [...new Set([...visibleEventTabs(current.visibleTabs), tab])] : visibleEventTabs(current.visibleTabs).filter((item) => item !== tab) }));
     if (!enabled && active === tab) setActive("overview");
   }
   return <div className="w-full min-w-0 space-y-4">
@@ -189,7 +197,7 @@ export function EventWorkspace({ id, initialSection, initialTab, initialAction, 
         {visibleActive === "tasks" && <TaskWorkspace event={event} initialTaskId={selectedTaskId} initialAction={quickAction} onActionConsumed={() => setQuickAction(undefined)} />}
         {visibleActive === "moodboard" && <EventMoodboard event={event} startAdding={addingMoodboardPhoto} />}
         {visibleActive === "files" && <EventFilesWorkspace key={event.id} event={event} />}
-        {visibleActive === "guests" && <EventGuestSummary event={event} />}
+        {visibleActive === "guests" && <EventGuestsWorkspace key={event.id} event={event} />}
         {visibleActive === "agenda" && <AgendaWorkspace key={event.id} event={event} />}
         {visibleActive === "control-room" && <EventControlRoom event={event} onOpenTasks={() => setActive("tasks")} onOpenAgenda={() => setActive("agenda")} onOpenDecisions={() => { setNotesTab("decisions"); setActive("notes"); }} />}
         {(visibleActive === "website" || visibleActive === "aso-ebi" || visibleActive === "accommodation" || visibleActive === "visa-travel") && <EventFeatureSpace section={visibleActive} />}

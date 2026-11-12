@@ -148,6 +148,8 @@ export type PlannerEvent = {
   tier?: "standard" | "premium";
   /** Controls navigation only. Hidden tabs retain all of their event data. */
   visibleTabs?: import("@/lib/event-workspace-navigation").OptionalWorkspaceSection[];
+  guestTabInitialized?: boolean;
+  guestWorkspace?: import("@/lib/event-guests").GuestWorkspaceData;
   description: string;
   image: string;
   createdAt: string;
