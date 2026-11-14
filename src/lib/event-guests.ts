@@ -7,6 +7,7 @@ export type EventGuest = {
   phone: string;
   group: string;
   tags: string[];
+  priority?: boolean;
   rsvp: GuestRsvp;
   invitedAt?: string;
   invitationFailedAt?: string;
@@ -40,7 +41,39 @@ export type GuestCollectorResponse = {
 export type RsvpFormQuestion = { id: string; sectionId: string; label: string; type: "Short answer" | "Long answer" | "Yes or no" | "Number"; required: boolean };
 export type RsvpFormSection = { id: string; title: string };
 export type RsvpForm = { allowSelfAdded: boolean; sections: RsvpFormSection[]; questions: RsvpFormQuestion[] };
-export type GuestMessage = { id: string; subject: string; body: string; channel: "Email" | "WhatsApp" | "SMS"; audience: string; createdAt: string; recipients: number };
+export type GuestMessageChannel = "Email" | "WhatsApp" | "SMS";
+export type GuestMessageKind = "Invitation" | "Reminder" | "Save the date" | "General update";
+export type GuestDeliveryStatus = "read" | "opened" | "delivered" | "failed" | "pending";
+export type GuestMessageRecipient = {
+  id: string;
+  name: string;
+  channel: GuestMessageChannel;
+  status: GuestDeliveryStatus;
+  rsvp: boolean;
+};
+export type GuestMessage = {
+  id: string;
+  subject: string;
+  body: string;
+  channel: GuestMessageChannel;
+  audience: string;
+  createdAt: string;
+  recipients: number;
+  kind?: GuestMessageKind;
+  recipientIds?: string[];
+  channels?: GuestMessageChannel[];
+  replyTo?: string;
+};
+export type GuestMessageRun = {
+  id: string;
+  kind: GuestMessageKind | "Gate codes";
+  sentAt: string;
+  subject: string;
+  body: string;
+  recipients: GuestMessageRecipient[];
+  credits: number;
+  author: string;
+};
 export type GuestGateSettings = {
   allowWalkIns: boolean;
   automaticCodes: boolean;
@@ -48,6 +81,29 @@ export type GuestGateSettings = {
   codeColor: string;
   useWebsiteTheme: boolean;
 };
+export type GuestAccessLevel = 1 | 2 | 3;
+export type GuestAccessCapabilities = {
+  viewNames: boolean;
+  viewRsvp: boolean;
+  viewAnswers: boolean;
+  editRsvpQuestions: boolean;
+  manageSeating: boolean;
+  manageGuests: boolean;
+  viewContact: boolean;
+  sendMessages: boolean;
+};
+export function guestAccessCapabilities(level: GuestAccessLevel): GuestAccessCapabilities {
+  return {
+    viewNames: true,
+    viewRsvp: level >= 2,
+    viewAnswers: level >= 2,
+    editRsvpQuestions: level >= 2,
+    manageSeating: level >= 2,
+    manageGuests: level >= 3,
+    viewContact: level >= 3,
+    sendMessages: level >= 3,
+  };
+}
 export const defaultGateSettings = (): GuestGateSettings => ({
   allowWalkIns: true, automaticCodes: false, codeColor: "#255646", useWebsiteTheme: true,
   bandRules: ["Family", "Bride’s side", "Groom’s side", "Bride’s friends", "Work", "Groom’s friends", "VIP"].map((tag, index) => ({ tag, band: index === 0 ? "Blue" : "None / N/A" })),
@@ -61,7 +117,9 @@ export type GuestWorkspaceData = {
   collectorResponses: GuestCollectorResponse[];
   collector: { hostLine: string; closesOn: string; closed: boolean; sections: GuestCollectorSection[] };
   messages: GuestMessage[];
+  messageRuns: GuestMessageRun[];
   rsvpForm: RsvpForm;
+  clientAccessLevel?: GuestAccessLevel;
   listLocked?: boolean;
   gateSettings?: GuestGateSettings;
   sampleSeeded?: boolean;
@@ -72,7 +130,7 @@ export const emptyGuestWorkspace = (): GuestWorkspaceData => ({
     { id: "name", label: "Your name", type: "Short answer", required: true },
     { id: "phone", label: "Phone / WhatsApp", type: "Short answer", required: true },
     { id: "email", label: "Email", type: "Short answer", required: false },
-  ], collectorResponses: [], collector: { hostLine: "We’d love to celebrate with you. Tell us who’s coming so we can plan properly.", closesOn: "", closed: false, sections: [{ id: "before-invitation", title: "Before the invitation" }] }, messages: [],
+  ], collectorResponses: [], collector: { hostLine: "We’d love to celebrate with you. Tell us who’s coming so we can plan properly.", closesOn: "", closed: false, sections: [{ id: "before-invitation", title: "Before the invitation" }] }, messages: [], messageRuns: [],
   rsvpForm: defaultRsvpForm(),
   gateSettings: defaultGateSettings(),
 });
@@ -147,7 +205,9 @@ export function guestWorkspaceData(value?: GuestWorkspaceData): GuestWorkspaceDa
       sections: Array.isArray(value.collector?.sections) && value.collector.sections.length ? value.collector.sections : fallback.collector.sections,
     },
     messages: Array.isArray(value.messages) ? value.messages : [],
+    messageRuns: Array.isArray(value.messageRuns) ? value.messageRuns : [],
     rsvpForm: value.rsvpForm ?? fallback.rsvpForm,
+    clientAccessLevel: value.clientAccessLevel === 1 || value.clientAccessLevel === 2 ? value.clientAccessLevel : 3,
     listLocked: Boolean(value.listLocked),
     gateSettings: { ...defaultGateSettings(), ...value.gateSettings, bandRules: value.gateSettings?.bandRules?.length ? value.gateSettings.bandRules : defaultGateSettings().bandRules },
     sampleSeeded: Boolean(value.sampleSeeded || sampleGuests),

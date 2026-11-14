@@ -6,6 +6,7 @@ import { ArrowRight, BriefcaseBusiness, HeartHandshake } from "@/components/ui/i
 import { PlannerShell } from "@/components/planner/planner-shell";
 import { ClientQuestionnaires } from "@/components/planner/client-questionnaires";
 import { ClientDesignDecisions } from "@/components/planner/client-design-decisions";
+import { ClientGuestAccess } from "@/components/planner/client-guest-access";
 import { RecipientAgendaPreview } from "@/components/planner/agenda/recipient-agenda-preview";
 
 export function RoleWorkspacePreview({ role }: { role: "client" | "vendor" }) {
@@ -15,7 +16,7 @@ export function RoleWorkspacePreview({ role }: { role: "client" | "vendor" }) {
     <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <PlannerShell role={role}>
         <RecipientAgendaPreview role={role} />
-        {!vendor ? <><ClientDesignDecisions /><ClientQuestionnaires /></> :
+        {!vendor ? <><ClientDesignDecisions /><ClientGuestAccess /><ClientQuestionnaires /></> :
         <div className="mx-auto max-w-5xl space-y-6">
           <div><p className="text-xs capitalize text-text-tertiary">{role} workspace</p><h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text-primary">Welcome, Amaka</h1><p className="mt-2 text-sm text-text-secondary">{vendor ? "A home for your services and the people you work with." : "A home for your celebrations and the people who bring them to life."}</p></div>
           <section className="grid overflow-hidden rounded-[var(--radius-lg)] border border-border-subtle bg-white md:grid-cols-2">
